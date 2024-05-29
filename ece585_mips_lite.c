@@ -52,7 +52,10 @@ struct instruction {
 	unsigned int 	rt;
 	unsigned int 	rd;
 	signed int 		imm;
-
+	bool 	RegDst;
+	bool 	WriteReg;
+	bool 	ReadReg1;
+	bool 	ReadReg2;
 };
 
 
@@ -64,8 +67,6 @@ int arith_count = 0;
 int logic_count = 0;
 int mem_count = 0;
 int cntrl_count = 0;
-
-
 
 
 /****************************************************************************
