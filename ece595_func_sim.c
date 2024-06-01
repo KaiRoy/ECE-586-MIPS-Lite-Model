@@ -13,14 +13,15 @@
 #include <string.h>
 #include <math.h>
 
-#include <stdint.h>
-#include <stdbool.h>
+//#include <stdint.h>
+//#include <stdbool.h>
 
 
 /*************************************************************************************************************
 ** Macros
 *************************************************************************************************************/
-#define SIZE 4096
+#define LINE 1024
+//#define SIZE 4*LINE
 #define MAX_REGS 32
 
 
@@ -56,18 +57,20 @@ struct instruction {
 	unsigned int 	rt;
 	unsigned int 	rd;
 	signed int 		imm;
-	bool 	RegDst;
-	bool 	WriteReg;
-	bool 	ReadReg1;
-	bool 	ReadReg2;
+//	bool 	RegDst;
+//	bool 	WriteReg;
+//	bool 	ReadReg1;
+//	bool 	ReadReg2;
 };
 
 struct Memory{//Holds array of of lines of memory and the size
-    char *current_mem[SIZE];//This will have the current memory that we are working with
+	signed int mem[LINE];//This will have the current memory that we are working with
+    int state[LINE];
 };
 
 struct Registers{//the CPU registers as int array with 32 max registers
-    int regs[MAX_REGS];
+    signed int regs[MAX_REGS];
+    int state[MAX_REGS];
 };
 
 
@@ -81,29 +84,20 @@ int mem_count = 0;
 int cntrl_count = 0;
 
 int mode;
+int halt = 0;
+int pc = 0;
 
 
 /*************************************************************************************************************
 ** Function Prototypes
 *************************************************************************************************************/
 void menu();
+void init(struct Memory *memory, struct Registers *registers);
 int func_sim(struct instruction instr, struct Memory *memory, struct Registers *registers);
 int func_arith(struct instruction instr, struct Registers *registers);
 int func_logic(struct instruction instr, struct Registers *registers);
 int func_mem(struct instruction instr, struct Memory *memory, struct Registers *registers);
 int func_cntrl(struct instruction instr, struct Registers *registers);
-
-
-void init_mem(struct Memory *memory, const char *path);
-char* read_word(struct Memory *memory, int i);
-void write_word(struct Memory *memory, int i, const char *word);
-int byte_read(struct Memory *memory, int i);
-void byte_write(struct Memory *memory, int i, const char *NewWord);
-void mem_free(struct Memory *memory);
-
-void init_regs(struct Registers *registers);
-int reg_read(struct Registers *registers, int i);
-void reg_write(struct Registers *registers, int i, int num_word);
 
 void print_regs(struct Registers *registers);
 void print_mem(struct Memory *memory);
@@ -115,41 +109,83 @@ void print_mem(struct Memory *memory);
 ** Description: C Main Function
 ****************************************************************************/
 int main(void) {
-	struct Memory memory = {0};
+	//Initial Print
+	printf("\nProgram Start\n\n");
+
+	//Initialization
+	struct Memory memory;
 	struct Registers registers;
+	pc = 0;
 
-	//User Input for Memory
-	char memFile[50];
-	printf("\nEnter your Memory File: ");
-	scanf("%s", memFile);
+	init(&memory, &registers);
 
-	// MEM TESTING
-	// Initializations
-	init_mem(&memory, memFile);
-	init_regs(&registers);
+	// Testing Instructions
+	struct instruction instr1;
+	instr1.type = LOGIC;
+	instr1.code = OR;
+	instr1.rs = 7;
+	instr1.rt = 8;
+	instr1.rd = 9;
+	struct instruction instr2;
+	instr2.type = LOGIC;
+	instr2.code = AND;
+	instr2.rs = 7;
+	instr2.rt = 8;
+	instr2.rd = 10;
+	struct instruction instr3;
+	instr3.type = LOGIC;
+	instr3.code = XOR;
+	instr3.rs = 7;
+	instr3.rt = 8;
+	instr3.rd = 11;
+	struct instruction instr4;
+	instr4.type = MEMORY;
+	instr4.code = STW;
+	instr4.rs = 7;
+	instr4.rt = 8;
+	instr4.imm = 0;
+	struct instruction instr5;
+	instr5.type = MEMORY;
+	instr5.code = LDW;
+	instr5.rs = 7;
+	instr5.rt = 20;
+	instr5.imm = 50;
+	struct instruction instr6;
+	instr6.type = CONTROL;
+	instr6.code = BZ;
+	instr6.rs = 0;
+	instr6.rt = 9;
+	instr6.imm = 0;
+	struct instruction instr7;
+	instr7.type = CONTROL;
+	instr7.code = JR;
+	instr7.rs = 7;
+	instr7.rt = 0;
+	instr7.imm = 9;
 
-	// Print contents
+
+	//Functional Simulator
+	printf("Instruction 1:\n");
+	func_sim(instr1, &memory, &registers);
+	printf("Instruction 2:\n");
+	func_sim(instr2, &memory, &registers);
+	printf("Instruction 3:\n");
+	func_sim(instr3, &memory, &registers);
+	printf("Instruction 4:\n");
+	func_sim(instr4, &memory, &registers);
+	printf("Instruction 5:\n");
+	func_sim(instr5, &memory, &registers);
+	printf("Instruction 6:\n");
+	func_sim(instr6, &memory, &registers);
+	printf("Instruction 7:\n");
+	func_sim(instr7, &memory, &registers);
+
+	// Print Results
 	print_regs(&registers);
 	print_mem(&memory);
+	printf("Halt = %d\tpc = %d\n", halt, pc);
 
-//	// FUNC SIM TESTING
-//	char traceFile[50];
-//
-//	//User Input for Trace
-//	printf("\nEnter your Trace File: ");
-//	scanf("%s", traceFile);
-//
-//	// Testing Instructions
-//	struct instruction instr1;
-//	struct instruction instr2;
-//	struct instruction instr3;
-//
-//	//Functional Simulator
-//	func_sim(instr1, &memory, &registers);
-//	func_sim(instr2, &memory, &registers);
-//	func_sim(instr3, &memory, &registers);
-
-	mem_free(&memory);
+	printf("\nProgram End\n");
 
 	return EXIT_SUCCESS;
 }
@@ -204,6 +240,24 @@ void menu() {
 }
 
 
+void init(struct Memory *memory, struct Registers *registers){
+	for(int i = 0; i < LINE; i++) {
+		memory->mem[i] = 0;
+		memory->state[i] = 0;
+	}
+
+	for(int j = 0; j < MAX_REGS; j++) {
+		registers->regs[j] = 0;
+		registers->state[j] = 0;
+	}
+
+	registers->regs[7] = 9;
+	registers->regs[8] = 65;
+
+	return;
+}
+
+
 
 
 /*************************************************************************************************************
@@ -216,7 +270,6 @@ void menu() {
 ** Description:
 ****************************************************************************/
 int func_sim(struct instruction instr, struct Memory *memory, struct Registers *registers){
-
 	// Switch Case for Optype;
 	switch (instr.type) {
 		case ARITHMETIC:
@@ -232,7 +285,7 @@ int func_sim(struct instruction instr, struct Memory *memory, struct Registers *
 			func_cntrl(instr, registers);
 			break;
 		default:
-			printf("Optype does not match\n");
+			printf("Optype does not match - %d\n", instr.type);
 			break;
 	}
 
@@ -249,27 +302,35 @@ int func_sim(struct instruction instr, struct Memory *memory, struct Registers *
 int func_arith(struct instruction instr, struct Registers *registers){
 	switch (instr.code) {
 		case ADD:
-
+			registers->regs[instr.rd] = registers->regs[instr.rs] + registers->regs[instr.rt];
+			registers->state[instr.rd] = 1;
 			break;
 		case ADDI:
-
+			registers->regs[instr.rt] = registers->regs[instr.rs] + instr.imm;
+			registers->state[instr.rt] = 1;
 			break;
 		case SUB:
-
+			registers->regs[instr.rd] = registers->regs[instr.rs] - registers->regs[instr.rt];
+			registers->state[instr.rd] = 1;
 			break;
 		case SUBI:
-
+			registers->regs[instr.rt] = registers->regs[instr.rs] - instr.imm;
+			registers->state[instr.rt] = 1;
 			break;
 		case MUL:
-
+			registers->regs[instr.rd] = registers->regs[instr.rs] * registers->regs[instr.rt];
+			registers->state[instr.rd] = 1;
 			break;
 		case MULI:
-
+			registers->regs[instr.rt] = registers->regs[instr.rs] * instr.imm;
+			registers->state[instr.rt] = 1;
 			break;
 		default:
-			printf("Invalid Opcode for selected Optype\n");
+			printf("Invalid Opcode for selected Optype - %d\n", instr.code);
 			break;
 	}
+
+	pc += 4;
 
 	return 0;
 }
@@ -284,27 +345,36 @@ int func_arith(struct instruction instr, struct Registers *registers){
 int func_logic(struct instruction instr, struct Registers *registers){
 	switch (instr.code) {
 		case OR:
-
+			registers->regs[instr.rd] = registers->regs[instr.rs] | registers->regs[instr.rt];
+			registers->state[instr.rd] = 1;
 			break;
 		case ORI:
-
+			registers->regs[instr.rt] = registers->regs[instr.rs] | instr.imm;
+			registers->state[instr.rt] = 1;
 			break;
 		case AND:
-
+			registers->regs[instr.rd] = registers->regs[instr.rs] & registers->regs[instr.rt];
+			registers->state[instr.rd] = 1;
 			break;
 		case ANDI:
-
+			registers->regs[instr.rd] = registers->regs[instr.rs] & instr.imm;
+			registers->state[instr.rt] = 1;
 			break;
 		case XOR:
-
+			registers->regs[instr.rd] = registers->regs[instr.rs] ^ registers->regs[instr.rt];
+			registers->state[instr.rd] = 1;
 			break;
 		case XORI:
-
+			registers->regs[instr.rd] = registers->regs[instr.rs] ^ instr.imm;
+			registers->state[instr.rt] = 1;
 			break;
 		default:
-			printf("Invalid Opcode for selected Optype\n");
+			printf("Invalid Opcode for selected Optype - %d\n", instr.code);
 			break;
 	}
+
+	pc += 4;
+
 	return 0;
 }
 
@@ -316,17 +386,25 @@ int func_logic(struct instruction instr, struct Registers *registers){
 ** Description:
 ****************************************************************************/
 int func_mem(struct instruction instr, struct Memory *memory, struct Registers *registers){
+	int addr;
 	switch (instr.code) {
 		case LDW:
-
+			addr = (registers->regs[instr.rs] + instr.imm) / 4;
+			registers->regs[instr.rt] = memory->mem[addr];
+			registers->state[instr.rt] = 1;
 			break;
 		case STW:
-
+			addr = (registers->regs[instr.rs] + instr.imm) / 4;
+			memory->mem[addr] = registers->regs[instr.rt];
+			memory->state[addr] = 1;
 			break;
 		default:
-			printf("Invalid Opcode for selected Optype\n");
+			printf("Invalid Opcode for selected Optype - %d\n", instr.code);
 			break;
 	}
+
+	pc += 4;
+
 	return 0;
 }
 
@@ -338,206 +416,32 @@ int func_mem(struct instruction instr, struct Memory *memory, struct Registers *
 ** Description:
 ****************************************************************************/
 int func_cntrl(struct instruction instr, struct Registers *registers){
+	int new_pc = pc + 4;;
+
 	switch (instr.code) {
 		case BZ:
-
+			if (registers->regs[instr.rs] == 0)
+				new_pc = pc + ((instr.rt<<16)+instr.imm);
 			break;
 		case BEQ:
-
+			if (registers->regs[instr.rs] == registers->regs[instr.rt])
+				new_pc = pc + (instr.imm);
 			break;
 		case JR:
-
+			new_pc = registers->regs[instr.rs];
 			break;
 		case HALT:
-
+			halt = 1;
 			break;
 		default:
-			printf("Invalid Opcode for selected Optype\n");
+			printf("Invalid Opcode for selected Optype - %d\n", instr.code);
+			pc += 4;
 			break;
 	}
+
+	pc = new_pc;
+
 	return 0;
-}
-
-
-
-
-/*************************************************************************************************************
-** Memory Function
-*************************************************************************************************************/
-/****************************************************************************
-FROM PROJECT SPECS
-c. Memory Access Instructions
-    i. LDW Rt Rs Imm (Add the contents of Rs and the immediate value “Imm” to generate
-    the effective address “A”, load the contents (32-bits) of the memory location at address
-    “A” into register Rt). Opcode: 001100
-    ii. STW Rt Rs Imm (Add the contents of Rs and the immediate value “Imm” to generate
-    the effective address “A”, store the contents of register Rt (32-bits) at the memory
-    address “A”). Opcode: 001101
-****************************************************************************/
-/****************************************************************************
-** Function: init_mem
-** Authors: Kamal Smith
-** Version: v1.0.0
-** Description: Function to initialize the memory in the program and read a line
- * If there is no error in the file read, will continue to get lines.
- * If there is an error while getting lines, will print a message, close the
- * file and exit the program.
- * If program opens and allocates memory without issues, will copy the contents
- * of line into the current_mem index.
- *
- * NOTE: May be better to break this into two different functions, can rewrite
-****************************************************************************/
-void init_mem(struct Memory *memory, const char *path){
-	// Opening the file with the memory in read mode
-	FILE *file = fopen(path,"r");
-
-    if (!file) {		//File does not open properly
-        printf("Error in init memory function opening the file");
-        exit(-1);
-    } else {			//File opens
-        // Set up a way to track where we are in memory
-    	int i = 0; 			// Where we are in the current memory
-        char line[SIZE];	// Storing the lines that we read from mem
-        while(fgets(line, sizeof(line), file)){
-            line[strcspn(line,"\n")] = 0;				//Will I be missing first line here?
-            memory -> current_mem[i] = (char *)malloc(strlen(line) + 1);
-            if (memory -> current_mem[i] == NULL){ 		//Checking if error with memory allocation
-                printf("Memory allocation error in init_mem function");
-                fclose(file);
-                exit(1);
-            }
-            strcpy(memory -> current_mem[i], line);
-            i += 4; //
-
-        }
-
-        fclose(file);
-    }
-}
-
-
-/****************************************************************************
-** Function: read_word
-** Authors: Kamal Smith
-** Version: v1.0.0
-** Description: Will return a string at the location of current_mem
-****************************************************************************/
-char* read_word(struct Memory *memory, int i){
-    return memory->current_mem[i];
-}
-
-
-/****************************************************************************
-** Function: write_word
-** Authors: Kamal Smith
-** Version: v1.0.0
-** Description: Allocates memory for a word and checks if theres an error with the allocation
- * if no error, will copy the contents of pointer word into the current index of
- * current_mem. edited from "init_mem" function.
-****************************************************************************/
-void write_word(struct Memory *memory, int i, const char *word){
-    memory->current_mem[i] = (char *)malloc(strlen(word) + 1);
-    if (memory -> current_mem[i] == NULL){ //Checking if error with memory allocation
-        printf("Memory allocation error in write_word function");
-    } else {
-        strcpy(memory -> current_mem[i], word);//copy contents of ptr word into memory
-    }
-}
-
-
-/****************************************************************************
-** Function: byte_read
-** Authors: Kamal Smith
-** Version: v1.0.0
-** Description: Calculates the byte offset of the word from memory and converts from hex to
- * a simpler int
- * Will return the value of byte
-****************************************************************************/
-int byte_read(struct Memory *memory, int i){
-    int offset = (i % 4);
-    char *word = memory -> current_mem[i - offset];
-    uint32_t valueWord = strtol(word, NULL, 16);
-    int byte = (valueWord >> ((3 - offset) * 8)) & 0xFF;
-    return byte;
-
-}
-
-
-/****************************************************************************
-** Function: byte_write
-** Authors: Kamal Smith
-** Version: v1.0.0
-** Description: Calculates the byte offset of the word from memory and converts from hex to
- * a simpler int. "valueWord" is then cleared and set with a new value then wrote
- * back as a hex value
-****************************************************************************/
-void byte_write(struct Memory *memory, int i, const char *NewWord){
-    int offset = (i % 4);
-    NewWord = memory -> current_mem[i - offset];
-    uint32_t valueWord = strtol(NewWord, NULL, 16);
-    uint32_t valueByte = strtol(NewWord, NULL ,16);
-
-    valueWord &= ~(0xFF << ((3 - offset) * 8)); // clearing offset using bitwise AND
-    valueWord |= (valueByte << ((3 - offset) * 8));//Setting new value using bitwise OR
-
-    sprintf(memory -> current_mem[i - offset], "%08X", valueWord);//Writes back the converted word
-}
-
-
-/****************************************************************************
-** Function: mem_free
-** Authors: Kamal Smith
-** Version: v1.0.0
-** Description: Every malloc needs a free, cleans up all that allocated memory
-****************************************************************************/
-void mem_free(struct Memory *memory){
-    for(int i = 0; i < SIZE; i += 4){
-        if(memory->current_mem[i] != NULL){
-        free(memory->current_mem[i]);
-        memory -> current_mem[i] = NULL;
-        }
-    }
-}
-
-
-
-
-/*************************************************************************************************************
-** Register Function
-*************************************************************************************************************/
-/****************************************************************************
-** Function: init_regs
-** Authors: Kamal Smith
-** Version: v1.0.0
-** Description: Initalizes all 32 of the registers and sets them to zero
-****************************************************************************/
-void init_regs(struct Registers *registers){
-    for(int i = 0; i < MAX_REGS; i++){
-        registers->regs[i] = 0;
-    }
-}
-
-
-/****************************************************************************
-** Function: reg_read
-** Authors: Kamal Smith
-** Version: v1.0.0
-** Description: Returns the value of the register at the indexed location
-****************************************************************************/
-int reg_read(struct Registers *registers, int i){
-    return registers -> regs[i];
-}
-
-
-/****************************************************************************
-** Function: reg_write
-** Authors: Kamal Smith
-** Version: v1.0.0
-** Description: Sets regs at "i" index to the value of num_word
-** puts the value of the reg at the location i
-****************************************************************************/
-void reg_write(struct Registers *registers, int i, int num_word){
-    registers-> regs[i] = num_word;
 }
 
 
@@ -553,8 +457,10 @@ void reg_write(struct Registers *registers, int i, int num_word){
 ** Description: Print the contents of the registers
 ****************************************************************************/
 void print_regs(struct Registers *registers){
+	printf("\nFinal Register State\n");
 	for (int i = 0; i < MAX_REGS; i++) {
-		printf("R%d = %d\n", i, registers->regs[i]);
+		if (registers->state[i] == 1)
+			printf("R%d: %d\n", i, registers->regs[i]);
 	}
 }
 
@@ -566,10 +472,104 @@ void print_regs(struct Registers *registers){
 ** Description: Print the contents of the memory
 ****************************************************************************/
 void print_mem(struct Memory *memory){
-	for (int i = 0; i < SIZE; i+=4) {
-		printf("\n!!!Not Implemented Yet!!!\n");
+	printf("\nFinal Memory State\n");
+	for (int i = 0; i < LINE; i++) {
+		if (memory->state[i] == 1)
+			printf("Address: %d, Contents: %d\n", i*4, memory->mem[i]);
 	}
 }
 
 
+
+
+/*************************************************************************************************************
+** Testing Instructions
+*************************************************************************************************************/
+// Arithmetic
+//	struct instruction instr1;
+//	instr1.type = ARITHMETIC;
+//	instr1.code = ADDI;
+//	instr1.rs = 0;
+//	instr1.rt = 1;
+//	instr1.imm = 1000;
+//	struct instruction instr2;
+//	instr2.type = ARITHMETIC;
+//	instr2.code = ADDI;
+//	instr2.rs = 0;
+//	instr2.rt = 2;
+//	instr2.imm = 1200;
+//	struct instruction instr3;
+//	instr3.type = ARITHMETIC;
+//	instr3.code = MULI;
+//	instr3.rs = 1;
+//	instr3.rt = 7;
+//	instr3.imm = 3;
+//	struct instruction instr4;
+//	instr4.type = ARITHMETIC;
+//	instr4.code = MUL;
+//	instr4.rs = 1;
+//	instr4.rt = 2;
+//	instr4.rd = 8;
+//	struct instruction instr5;
+//	instr5.type = ARITHMETIC;
+//	instr5.code = ADDI;
+//	instr5.rs = 11;
+//	instr5.rt = 0;
+//	instr5.imm = 50;
+//	struct instruction instr6;
+//	instr6.type = ARITHMETIC;
+//	instr6.code = SUB;
+//	instr6.rs = 2;
+//	instr6.rt = 0;
+//	instr6.rd = 15;
+//	struct instruction instr7;
+//	instr7.type = ARITHMETIC;
+//	instr7.code = SUBI;
+//	instr7.rs = 2;
+//	instr7.rt = 20;
+//	instr7.imm = -12;
+
+// OTHER
+//	struct instruction instr1;
+//	instr1.type = LOGIC;
+//	instr1.code = OR;
+//	instr1.rs = 7;
+//	instr1.rt = 8;
+//	instr1.rd = 9;
+//	struct instruction instr2;
+//	instr2.type = LOGIC;
+//	instr2.code = AND;
+//	instr2.rs = 7;
+//	instr2.rt = 8;
+//	instr2.rd = 10;
+//	struct instruction instr3;
+//	instr3.type = LOGIC;
+//	instr3.code = XOR;
+//	instr3.rs = 7;
+//	instr3.rt = 8;
+//	instr3.rd = 11;
+//	struct instruction instr4;
+//	instr4.type = MEMORY;
+//	instr4.code = STW;
+//	instr4.rs = 7;
+//	instr4.rt = 8;
+//	instr4.imm = 0;
+//	struct instruction instr5;
+//	instr5.type = MEMORY;
+//	instr5.code = LDW;
+//	instr5.rs = 7;
+//	instr5.rt = 20;
+//	instr5.imm = 50;
+//	struct instruction instr6;
+//	instr6.type = CONTROL;
+//	instr6.code = BZ;
+//	instr6.rs = 0;
+//	instr6.rt = 9;
+//	instr6.imm = 0;
+//	struct instruction instr7;
+//	instr7.type = CONTROL;
+//	instr7.code = JR;
+//	instr7.rs = 7;
+//	instr7.rt = 0;
+//	instr7.imm = 9;
 
