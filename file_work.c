@@ -121,7 +121,12 @@ int main()
     for (int i = 0; i < line_count; i++)
     {
         components.Opcode = (mem[i] & Opcode_Mask) >> 26;
-        if (components.Opcode == ADD || SUB || MUL || OR || AND || XOR)
+        if (components.Opcode == ADD ||
+            components.Opcode == SUB ||
+            components.Opcode == MUL ||
+            components.Opcode == OR ||
+            components.Opcode == AND ||
+            components.Opcode == XOR)
         {
             components.Rs = (mem[i] & Rs_Mask) >> 21;
             components.Rt = (mem[i] & Rt_Mask) >> 16;
@@ -134,7 +139,18 @@ int main()
             printf("Rd is R%x\n", components.Rd);
 
         }
-        else if (components.Opcode == ADDI || SUBI || MULI || ORI || ANDI || XORI || LDW || STW || BZ || BEQ || JR || HALT)
+        else if (components.Opcode == ADDI ||
+                 components.Opcode == SUBI ||
+                 components.Opcode == MULI ||
+                 components.Opcode == ORI ||
+                 components.Opcode == ANDI ||
+                 components.Opcode == XORI ||
+                 components.Opcode == LDW ||
+                 components.Opcode == STW ||
+                 components.Opcode == BZ ||
+                 components.Opcode == BEQ ||
+                 components.Opcode == JR ||
+                 components.Opcode == HALT)
         {
             components.Rs = (mem[i] & Rs_Mask) >> 21;
             components.Rt = (mem[i] & Rt_Mask) >> 16;
