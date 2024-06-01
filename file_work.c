@@ -15,7 +15,8 @@ Assumes the memory image text file will contain good data:
 #include <string.h>
 
 /*Macros*/
-#define MAXLEN 9 //8 hex values on a given line, plus room for the newline character
+#define MAXLEN 10 //8 hex values on a given line, room for the null character '\0', and room for the newline character
+#define LINELEN 60 //to deal with any unexpected values in a line of the memory image file
 #define LINECOUNTMAX 1024 //Only 1024 lines from the memory image can be read
 
 /*Global Variables*/
@@ -82,10 +83,12 @@ int main()
     int line_count = 0; //Keeps track of how many lines are read from the memory image file (max is 1024)
     int mem_index = 0; //index for memory, used instead of line_count because we want to count lines starting at 1 and not 0
 
+    //Struct declaration
     type_components components;
 
     while (fgets(line, MAXLEN, fp) != NULL) //fgets terminates string line with '\0'
     {
+        printf("the line we got was: %s",line);
         line_count++; //increment the line counter for each line read
 
         //Stops reading from memory image if more than 1024 lines are in the memory image file
@@ -115,38 +118,39 @@ int main()
         mem_index++;
     }
 
-    for (int i = 0; i < line_count - 1; i++) //line count starts at 1
+    for (int i = 0; i < line_count; i++)
     {
-        components.Opcode = mem[i] & Opcode_Mask;
+        components.Opcode = (mem[i] & Opcode_Mask) >> 26;
         if (components.Opcode == ADD || SUB || MUL || OR || AND || XOR)
         {
-            components.Rs = mem[i] & Rs_Mask;
-            components.Rt = mem[i] & Rt_Mask;
-            components.Rd = mem[i] & Rd_Mask;
+            components.Rs = (mem[i] & Rs_Mask) >> 21;
+            components.Rt = (mem[i] & Rt_Mask) >> 16;
+            components.Rd = (mem[i] & Rd_Mask) >> 11;
 
             //Remove later, printing to check
-            printf("Opcode is %d\n", components.Opcode);
-            printf("Rs is %d\n", components.Rs);
-            printf("Rt is %d\n", components.Rt);
-            printf("Rd is %d\n", components.Rd);
+            printf("Opcode is %x\n", components.Opcode);
+            printf("Rs is R%x\n", components.Rs);
+            printf("Rt is R%x\n", components.Rt);
+            printf("Rd is R%x\n", components.Rd);
 
         }
         else if (components.Opcode == ADDI || SUBI || MULI || ORI || ANDI || XORI || LDW || STW || BZ || BEQ || JR || HALT)
         {
-            components.Rs = mem[i] & Rs_Mask;
-            components.Rt = mem[i] & Rt_Mask;
-            components.Immediate = mem[i] & Immediate_Mask;
+            components.Rs = (mem[i] & Rs_Mask) >> 21;
+            components.Rt = (mem[i] & Rt_Mask) >> 16;
+            components.Immediate = (mem[i] & Immediate_Mask);
 
             //Remove later, printing to check
-            printf("Opcode is %d\n", components.Opcode);
-            printf("Rs is %d\n", components.Rs);
-            printf("Rt is %d\n", components.Rt);
-            printf("Immediate is %d\n", components.Immediate);
+            printf("Opcode is %x\n", components.Opcode);
+            printf("Rs is R%x\n", components.Rs);
+            printf("Rt is R%x\n", components.Rt);
+            printf("Immediate is %x\n", components.Immediate);
         }
         else
         {
             printf("ERROR: Invalid Opcode\n");
         }
+        printf("\n"); //FIXME, remove in final build
     }
 
     if (fclose(fp) == EOF)
@@ -308,6 +312,7 @@ int Mem_Image_Handler(char line[])	//TraceLine is a the address of the first ele
 {
 	//Place all character hex values into a string. Ignore all whitespace and non hex values
 	char Mem_Image_Text[MAXLEN] = {'x','x','x','x','x','x','x','x','x'};	//initialize to an impossible value
+	printf("Mem_Image_Text: %s\n", Mem_Image_Text);
 	int hexcount = 0;	//counts the number of hex values in the trace line being examined line (should only be 8)
 	int i = 0;
 	int j = 0;
@@ -335,7 +340,7 @@ int Mem_Image_Handler(char line[])	//TraceLine is a the address of the first ele
 		}
 	}
 
-	printf("Mem_Image_Text: %s\n", Mem_Image_Text);
+	printf("Mem_Image_Text after placement: %s\n", Mem_Image_Text);
 	//Converting the string to an integer
     for (int i = 0; i < 8; i++)
     {
