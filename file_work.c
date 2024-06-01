@@ -17,6 +17,7 @@ Assumes the memory image text file will contain good data:
 /*Macros*/
 #define MAXLEN 10 //8 hex values on a given line, room for the null character '\0', and room for the newline character
 #define LINECOUNTMAX 1024 //Only 1024 lines from the memory image can be read
+#define FILENAMESIZE 60 //60 characters allowed for the file name
 
 /*Global Variables*/
 int mem[LINECOUNTMAX]; //array of 1024 integer values
@@ -69,8 +70,14 @@ typedef struct
 /*Main function for this code*/
 int main()
 {
+    //Get string name from user
+    char file_name[FILENAMESIZE];
+    printf("Enter the name of the memory image textfile: (Example: MemoryImage.txt)\n");
+    scanf("%s", file_name);
+    file_name[strcspn(file_name, "\n")] = '\0'; //replaces newline will null character
+
 	FILE *fp;   //file pointer
-	fp = fopen("MemoryImage.txt", "r");
+	fp = fopen(&file_name, "r"); //pass the address of the string storing the file name
 	if (fp == NULL)
     {
         printf("ERROR: Could not open file\n");
@@ -92,6 +99,7 @@ int main()
         //Stops reading from memory image if more than 1024 lines are in the memory image file
         if (line_count >= LINECOUNTMAX)
         {
+            printf("\n");
             printf("WARNING! Exceeded 4kB memory state, lines after 1024 will no longer be read\n\n");
             break;
         }
