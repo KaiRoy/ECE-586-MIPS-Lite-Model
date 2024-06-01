@@ -16,7 +16,6 @@ Assumes the memory image text file will contain good data:
 
 /*Macros*/
 #define MAXLEN 10 //8 hex values on a given line, room for the null character '\0', and room for the newline character
-#define LINELEN 60 //to deal with any unexpected values in a line of the memory image file
 #define LINECOUNTMAX 1024 //Only 1024 lines from the memory image can be read
 
 /*Global Variables*/
@@ -30,7 +29,6 @@ const int Immediate_Mask = 0x0000FFFF;
 /*Function Prototypes*/
 int containshex(char string[]); //checks for blank lines.
 int Mem_Image_Handler(char line[]); //Converts a line in the image file to an integer and stores in the memory array
-int ishexval(char val); //verifies is a character is a hex value
 int TextToHex(char value); //converts a character to an integer value
 
 /*Enumerations*/
@@ -86,19 +84,19 @@ int main()
     //Struct declaration
     type_components components;
 
+    //Extract the string from the text file and place it into the memory array
     while (fgets(line, MAXLEN, fp) != NULL) //fgets terminates string line with '\0'
     {
-        printf("the line we got was: %s",line);
         line_count++; //increment the line counter for each line read
 
         //Stops reading from memory image if more than 1024 lines are in the memory image file
         if (line_count >= LINECOUNTMAX)
         {
-            printf("WARNING! Exceeded 4kB memory state, no longer reading from memory image file");
+            printf("WARNING! Exceeded 4kB memory state, lines after 1024 will no longer be read\n\n");
             break;
         }
 
-        line[strcspn(line, "\n")] = 0; //remove newline character from the given line
+        line[strcspn(line, "\n")] = '\0'; //replaces newline will null character
 
         if (!containshex(line)) //checking for black lines
         {
@@ -106,18 +104,12 @@ int main()
             continue;
         }
 
-        printf("line gotten is: %s\n", line);
-        for (int i = 0; i < MAXLEN; i++)
-        {
-            printf("%c", line[i]);
-        }
-        printf("\n");
-
         //Fill memory
         mem[mem_index] = Mem_Image_Handler(line);
         mem_index++;
     }
 
+    //Iterate through the memory array, writing to registers/components line by line
     for (int i = 0; i < line_count; i++)
     {
         components.Opcode = (mem[i] & Opcode_Mask) >> 26;
@@ -133,10 +125,12 @@ int main()
             components.Rd = (mem[i] & Rd_Mask) >> 11;
 
             //Remove later, printing to check
+            printf("line: %08x\n", mem[i]);
+            printf("line number: %d\n", i+1);
             printf("Opcode is %x\n", components.Opcode);
-            printf("Rs is R%x\n", components.Rs);
-            printf("Rt is R%x\n", components.Rt);
-            printf("Rd is R%x\n", components.Rd);
+            printf("Rs is R%d\n", components.Rs);
+            printf("Rt is R%d\n", components.Rt);
+            printf("Rd is R%d\n", components.Rd);
 
         }
         else if (components.Opcode == ADDI ||
@@ -157,16 +151,20 @@ int main()
             components.Immediate = (mem[i] & Immediate_Mask);
 
             //Remove later, printing to check
+            printf("line: %08x\n", mem[i]);
+            printf("line number: %d\n", i+1);
             printf("Opcode is %x\n", components.Opcode);
-            printf("Rs is R%x\n", components.Rs);
-            printf("Rt is R%x\n", components.Rt);
-            printf("Immediate is %x\n", components.Immediate);
+            printf("Rs is R%d\n", components.Rs);
+            printf("Rt is R%d\n", components.Rt);
+            printf("Immediate is %04x\n", components.Immediate);
         }
         else
         {
             printf("ERROR: Invalid Opcode\n");
         }
-        printf("\n"); //FIXME, remove in final build
+
+        //FIXME, remove in final build, used to space instructions apart in display
+        printf("\n");
     }
 
     if (fclose(fp) == EOF)
@@ -221,40 +219,6 @@ int containshex(char string[])  //Checks for blank lines in memory image
         }
     }
     return does;
-}
-
-int ishexval(char val)  //verifies is a character is a hex value
-{
-    switch(val)
-        {
-        case '0':
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-        case '6':
-        case '7':
-        case '8':
-        case '9':
-        case 'a':
-        case 'A':
-        case 'b':
-        case 'B':
-        case 'c':
-        case 'C':
-        case 'd':
-        case 'D':
-        case 'e':
-        case 'E':
-        case 'f':
-        case 'F':
-            return 1;
-            break;
-        default:	//no hex value in string
-            return 0;
-            break;
-        }
 }
 
 /*Converts a character to an integer*/
@@ -326,41 +290,13 @@ int TextToHex(char value)
 /*Function converts a single line of text from the memory image to an integer and stores that integer in a memory array*/
 int Mem_Image_Handler(char line[])	//TraceLine is a the address of the first element of a string of unknown length
 {
-	//Place all character hex values into a string. Ignore all whitespace and non hex values
-	char Mem_Image_Text[MAXLEN] = {'x','x','x','x','x','x','x','x','x'};	//initialize to an impossible value
-	printf("Mem_Image_Text: %s\n", Mem_Image_Text);
-	int hexcount = 0;	//counts the number of hex values in the trace line being examined line (should only be 8)
-	int i = 0;
-	int j = 0;
-
 	int exp = 7; //exponent for converting
-
 	int mem_image_hex = 0;
 
-
-	while (line[i] != '\0')	//'\0' is added by fgets
-	{
-	    if (!ishexval(line[i]))
-		{
-			i = i + 1; //ignore whitespace, focus only on numerical data
-			continue;
-		}
-		Mem_Image_Text[j] = line[i];
-		i = i + 1;
-		j = j + 1;
-		hexcount = hexcount + 1;
-		if (hexcount == 8)	//if we get more than 32 bits of data in a given line of the trace file
-		{
-		    line[i+1] = '\0'; //not necessary, as fgets adds the newline character
-			break;					//ignore data over 32 bits (more than 8 hex values)
-		}
-	}
-
-	printf("Mem_Image_Text after placement: %s\n", Mem_Image_Text);
 	//Converting the string to an integer
     for (int i = 0; i < 8; i++)
     {
-        mem_image_hex = mem_image_hex + (TextToHex(Mem_Image_Text[i]) * pow(16,exp));
+        mem_image_hex = mem_image_hex + (TextToHex(line[i]) * pow(16,exp));
         exp--;
     }
 
