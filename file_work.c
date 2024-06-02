@@ -18,6 +18,9 @@ Assumes the memory image text file will contain good data:
 #define MAXLEN 10 //8 hex values on a given line, room for the null character '\0', and room for the newline character
 #define LINECOUNTMAX 1024 //Only 1024 lines from the memory image can be read
 #define FILENAMESIZE 60 //60 characters allowed for the file name
+#define OPCODESIZE 6
+#define REGSIZE 5
+#define IMMEDIATESIZE 16
 
 /*Global Variables*/
 int mem[LINECOUNTMAX]; //array of 1024 integer values
@@ -34,24 +37,24 @@ int TextToHex(char value); //converts a character to an integer value
 
 /*Enumerations*/
 enum opcodes {
-	ADD 	= 000000,
-	ADDI 	= 000001,
-	SUB 	= 000010,
-	SUBI 	= 000011,
-	MUL 	= 000100,
-	MULI 	= 000101,
-	OR 		= 000110,
-	ORI 	= 000111,
-	AND 	= 001000,
-	ANDI 	= 001001,
-	XOR 	= 001010,
-	XORI 	= 001011,
-	LDW 	= 001100,
-	STW 	= 001101,
-	BZ 		= 001110,
-	BEQ 	= 001111,
-	JR 		= 010000,
-	HALT 	= 010001
+	ADD 	= 0x00, //000000
+	ADDI 	= 0x01, //000001
+	SUB 	= 0x02, //000010
+	SUBI 	= 0x03, //000011
+	MUL 	= 0x04, //000100
+	MULI 	= 0x05, //000101
+	OR 		= 0x06, //000110
+	ORI 	= 0x07, //000111
+	AND 	= 0x08, //001000
+	ANDI 	= 0x09, //001001
+	XOR 	= 0x0A, //001010
+	XORI 	= 0x0B, //001011
+	LDW 	= 0x0C, //001100
+	STW 	= 0x0D, //001101
+	BZ 		= 0x0E, //001110
+	BEQ 	= 0x0F, //001111
+	JR 		= 0x10, //010000
+	HALT 	= 0x11  //010001
 };
 
 /*Structs*/
@@ -70,14 +73,16 @@ typedef struct
 /*Main function for this code*/
 int main()
 {
+
     //Get string name from user
     char file_name[FILENAMESIZE];
     printf("Enter the name of the memory image textfile: (Example: MemoryImage.txt)\n");
     scanf("%s", file_name);
     file_name[strcspn(file_name, "\n")] = '\0'; //replaces newline will null character
 
+
 	FILE *fp;   //file pointer
-	fp = fopen(&file_name, "r"); //pass the address of the string storing the file name
+	fp = fopen("MemoryImage.txt", "r"); //pass the address of the string storing the file name
 	if (fp == NULL)
     {
         printf("ERROR: Could not open file\n");
@@ -132,6 +137,7 @@ int main()
             components.Rt = (mem[i] & Rt_Mask) >> 16;
             components.Rd = (mem[i] & Rd_Mask) >> 11;
 
+
             //Remove later, printing to check
             printf("line: %08x\n", mem[i]);
             printf("line number: %d\n", i+1);
@@ -139,6 +145,7 @@ int main()
             printf("Rs is R%d\n", components.Rs);
             printf("Rt is R%d\n", components.Rt);
             printf("Rd is R%d\n", components.Rd);
+
 
         }
         else if (components.Opcode == ADDI ||
@@ -158,6 +165,7 @@ int main()
             components.Rt = (mem[i] & Rt_Mask) >> 16;
             components.Immediate = (mem[i] & Immediate_Mask);
 
+
             //Remove later, printing to check
             printf("line: %08x\n", mem[i]);
             printf("line number: %d\n", i+1);
@@ -165,6 +173,7 @@ int main()
             printf("Rs is R%d\n", components.Rs);
             printf("Rt is R%d\n", components.Rt);
             printf("Immediate is %04x\n", components.Immediate);
+
         }
         else
         {
@@ -310,5 +319,6 @@ int Mem_Image_Handler(char line[])	//TraceLine is a the address of the first ele
 
     return mem_image_hex;
 }
+
 
 
