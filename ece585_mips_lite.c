@@ -255,17 +255,10 @@ int main(void) {
 	// Run Instructions
 	struct instruction instr;
 	int count = 0;
-	while (!halt && (pc < 1024)) {		// Does this need to be <= ?
-		// printf("instr: %d\n", count++);
+	while (!halt && (pc < 1024)) {
 		instr = instr_arr[pc];
-		// if (instr.rd == 12 || instr.rt == 12)
-		// 	printf("!!!R12 - Line: %d\n", pc+1);
 		func_sim(instr, &memory, &registers);
-		// Insert Timing/Pipeline Simulator
-		// if (halt) {
-		// 	printf("Program Halted\n");
-		// 	break;
-		// }
+		// Insert Timing/Pipeline Simulator ----------------------------
 	}
 
 
@@ -282,9 +275,9 @@ int main(void) {
 	print_regs(&registers);
 	print_mem(&memory);
 	if (mode == 1) {
-		// Insert UI function for Timing (no forwarding)
+		// Insert UI function for Timing (no forwarding) ----------------
 	} else if (mode == 2) {
-		// Insert UI function for Timing (forwarding)
+		// Insert UI function for Timing (forwarding) -------------------
 	}
 
 
@@ -598,13 +591,11 @@ int func_mem(struct instruction instr, struct Memory *memory, struct Registers *
 	int addr;
 	switch (instr.code) {
 		case LDW:
-			// printf("Opcode: LDW\tLine: %d\n", pc+1);
 			addr = (registers->regs[instr.rs] + instr.imm) / 4;
 			registers->regs[instr.rt] = memory->mem[addr];
 			registers->state[instr.rt] = 1;
 			break;
 		case STW:
-			// printf("Opcode: STW\tLine: %d\n", pc+1);
 			addr = (registers->regs[instr.rs] + instr.imm) / 4;
 			memory->mem[addr] = registers->regs[instr.rt];
 			memory->state[addr] = 1;
@@ -613,10 +604,6 @@ int func_mem(struct instruction instr, struct Memory *memory, struct Registers *
 			printf("Invalid Opcode for selected Optype(M) - %d\n", instr.code);
 			break;
 	}
-
-	// printf("Rs: R%d = %d\n", instr.rs, registers->regs[instr.rs]);
-	// printf("Rt: R%d = %d\n", instr.rt, registers->regs[instr.rt]);
-	// printf("Imm: %d\n", instr.imm);
 
 	mem_count++;
 	pc++;
@@ -638,37 +625,22 @@ int func_cntrl(struct instruction instr, struct Registers *registers){
 		case BZ:
 			if (registers->regs[instr.rs] == 0)
 				new_pc = pc + ((instr.rt<<16)+instr.imm);
-			// printf("Opcode: BZ\tLine: %d\n", pc+1);
 			break;
 		case BEQ:
 			if (registers->regs[instr.rs] == registers->regs[instr.rt])
 				new_pc = pc + (instr.imm);
-			// printf("Opcode: BEQ\tLine: %d\n", pc+1);
-			// printf("Rs: %d\n", registers->regs[instr.rs]);
-			// printf("Rt: %d\n", registers->regs[instr.rt]);
-			// printf("Imm: %d\n", instr.imm);
-			// printf("New Line: %d\n\n", new_pc+1);
 			break;
 		case JR:
 			new_pc = (registers->regs[instr.rs])/4;
-			// printf("Opcode: JR\tLine: %d\n", pc+1);
 			break;
 		case HALT:
 			halt = 1;
-			// new_pc = pc;
-			// printf("Opcode: Halt\tLine: %d\n", pc+1);
 			break;
 		default:
 			printf("Invalid Opcode for selected Optype(C) - %d\n", instr.code);
 			pc++;
 			break;
 	}
-
-	// Test Print
-	// printf("Rs: R%d = %d\n", instr.rs, registers->regs[instr.rs]);
-	// printf("Rt: R%d = %d\n", instr.rt, registers->regs[instr.rt]);
-	// printf("Imm: %d\n", instr.imm);
-	// printf("New Line: %d\n\n", new_pc+1);
 
 	cntrl_count++;
 	pc = new_pc;
