@@ -288,7 +288,7 @@ int main(void) {
 	}
 
 
-	printf("\nProgram End\n");
+	printf("\nProgram Halted\n");
 	return EXIT_SUCCESS;
 }
 
