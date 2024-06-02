@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdbool.h>
 
 
 /****************************************************************************
@@ -27,24 +28,24 @@
 ****************************************************************************/
 enum optype {ARITHMETIC, LOGIC, MEMORY, CONTROL};
 enum opcode {
-	ADD 	= 000000,
-	ADDI 	= 000001,
-	SUB 	= 000010,
-	SUBI 	= 000011,
-	MUL 	= 000100,
-	MULI 	= 000101,
-	OR 		= 000110,
-	ORI 	= 000111,
-	AND 	= 001000,
-	ANDI 	= 001001,
-	XOR 	= 001010,
-	XORI 	= 001011,
-	LDW 	= 001100,
-	STW 	= 001101,
-	BZ 		= 001110,
-	BEQ 	= 001111,
-	JR 		= 010000,
-	HALT 	= 010001
+	ADD     = 0x00, 	//000000
+    ADDI    = 0x01, 	//000001
+    SUB    	= 0x02, 	//000010
+    SUBI    = 0x03, 	//000011
+    MUL     = 0x04, 	//000100
+    MULI    = 0x05, 	//000101
+    OR      = 0x06, 	//000110
+    ORI     = 0x07, 	//000111
+    AND     = 0x08, 	//001000
+    ANDI    = 0x09, 	//001001
+    XOR     = 0x0A, 	//001010
+    XORI    = 0x0B, 	//001011
+    LDW     = 0x0C, 	//001100
+    STW     = 0x0D, 	//001101
+    BZ      = 0x0E, 	//001110
+    BEQ     = 0x0F, 	//001111
+    JR      = 0x10, 	//010000
+    HALT    = 0x11  	//010001
 };
 
 struct instruction {
@@ -102,6 +103,8 @@ const int Rt_Mask = 0x001F0000;
 const int Rd_Mask = 0x0000F800;
 const int Immediate_Mask = 0x0000FFFF;
 
+struct instruction instr_arr[LINECOUNTMAX];
+
 
 /****************************************************************************
 ** Function Prototypes
@@ -138,11 +141,9 @@ int main(void) {
 	//Initialization
 	struct Memory memory;
 	struct Registers registers;
-	init(&memory, &registers);
 	pc = 0;
 
 	char fileName[50];
-	int choice;
 
 	/*----- Memory Image File Handling -----*/
 	//User Input here
@@ -150,8 +151,8 @@ int main(void) {
 	scanf("%s", fileName);
 
 	FILE *fp;   //file pointer
-	fp = fopen(fileName, "r");					//User Input Name
-	// fp = fopen("MemoryImage.txt", "r");		//Set Name
+	// fp = fopen(fileName, "r");				//User Input Name
+	fp = fopen("MemoryImage.txt", "r");		//Set Name
 
 	if (fp == NULL)
 	{
@@ -165,7 +166,7 @@ int main(void) {
     int mem_index = 0; 	//index for memory, used instead of line_count because we want to count lines starting at 1 and not 0
 
     //Struct declaration
-    type_components components;
+    struct instruction components;
 
     //Extract the string from the text file and place it into the memory array
     while (fgets(line, MAXLEN, fp) != NULL) //fgets terminates string line with '\0'
@@ -194,60 +195,48 @@ int main(void) {
 
 	//Iterate through the memory array, writing to registers/components line by line
     for (int i = 0; i < line_count; i++)
-    {		//NOTE - Kai: This could probably be simplified down (remove the if else). Change the struct being used?
-        components.Opcode = (mem[i] & Opcode_Mask) >> 26;
-        if (components.Opcode == ADD ||
-            components.Opcode == SUB ||
-            components.Opcode == MUL ||
-            components.Opcode == OR ||
-            components.Opcode == AND ||
-            components.Opcode == XOR)
+    {
+		components.code = (mem[i] & Opcode_Mask) >> 26;
+		components.rs = (mem[i] & Rs_Mask) >> 21;
+		components.rt = (mem[i] & Rt_Mask) >> 16;
+		components.rd = (mem[i] & Rd_Mask) >> 11;
+		components.imm = (mem[i] & Immediate_Mask);
+        if (components.code == ADD ||
+			components.code == ADDI ||
+			components.code == SUBI ||
+            components.code == SUB ||
+            components.code == MUL ||
+			components.code == MULI)
         {
-            components.Rs = (mem[i] & Rs_Mask) >> 21;
-            components.Rt = (mem[i] & Rt_Mask) >> 16;
-            components.Rd = (mem[i] & Rd_Mask) >> 11;
-
-            //Remove later, printing to check
-            printf("line: %08x\n", mem[i]);
-            printf("line number: %d\n", i+1);
-            printf("Opcode is %x\n", components.Opcode);
-            printf("Rs is R%d\n", components.Rs);
-            printf("Rt is R%d\n", components.Rt);
-            printf("Rd is R%d\n", components.Rd);
-
+			components.type = ARITHMETIC;
         }
-        else if (components.Opcode == ADDI ||
-                 components.Opcode == SUBI ||
-                 components.Opcode == MULI ||
-                 components.Opcode == ORI ||
-                 components.Opcode == ANDI ||
-                 components.Opcode == XORI ||
-                 components.Opcode == LDW ||
-                 components.Opcode == STW ||
-                 components.Opcode == BZ ||
-                 components.Opcode == BEQ ||
-                 components.Opcode == JR ||
-                 components.Opcode == HALT)
+        else if (components.code == OR ||
+				 components.code == ORI ||
+                 components.code == AND ||
+                 components.code == ANDI ||
+				 components.code == XOR ||
+                 components.code == XORI)
         {
-            components.Rs = (mem[i] & Rs_Mask) >> 21;		
-            components.Rt = (mem[i] & Rt_Mask) >> 16;
-            components.Immediate = (mem[i] & Immediate_Mask);
-
-            //Remove later, printing to check
-            printf("line: %08x\n", mem[i]);
-            printf("line number: %d\n", i+1);
-            printf("Opcode is %x\n", components.Opcode);
-            printf("Rs is R%d\n", components.Rs);
-            printf("Rt is R%d\n", components.Rt);
-            printf("Immediate is %04x\n", components.Immediate);
+			components.type = LOGIC;
+        }
+		else if (components.code == LDW ||
+                 components.code == STW)
+        {
+			components.type = MEMORY;
+        }
+		else if (components.code == BZ ||
+                 components.code == BEQ ||
+                 components.code == JR ||
+                 components.code == HALT)
+        {
+			components.type = CONTROL;
         }
         else
         {
-            printf("ERROR: Invalid Opcode\n");
+            // printf("ERROR: Invalid Opcode\n");
         }
 
-        //FIXME, remove in final build, used to space instructions apart in display
-        printf("\n");
+		instr_arr[i] = components;
     }
 	
 	//Close File
@@ -256,6 +245,8 @@ int main(void) {
 		printf("ERROR: File close not successful\n");
 	}
 
+	init(&memory, &registers);
+
 
 	/*----- Simulator -----*/
 	// Select Simulator Mode
@@ -263,17 +254,31 @@ int main(void) {
 
 	// Run Instructions
 	struct instruction instr;
+	int count = 0;
 	while (!halt && (pc < 1024)) {		// Does this need to be <= ?
-		// Insert Instruction Decode
+		// printf("instr: %d\n", count++);
+		instr = instr_arr[pc];
+		// if (instr.rd == 12 || instr.rt == 12)
+		// 	printf("!!!R12 - Line: %d\n", pc+1);
 		func_sim(instr, &memory, &registers);
-		pipe_sim(instr);
+		// Insert Timing/Pipeline Simulator
+		// if (halt) {
+		// 	printf("Program Halted\n");
+		// 	break;
+		// }
 	}
 
 
 	/*----- Print Results -----*/
-	// Insert function for instruction print out;
+	printf("\n\nInstruction Counts\n");
+	printf("Total number of instructions: %d\n", instr_count);
+	printf("Arithmetic instructions: %d\n", arith_count);
+	printf("Logical instructions: %d\n", logic_count);
+	printf("Memory access instructions: %d\n", mem_count);
+	printf("Control transfer instructions: %d\n", cntrl_count);
+
 	printf("\nFinal Register State\n");
-	printf("\nProgram Counter: %d", pc);
+	printf("\nProgram Counter: %d\n", pc*4);
 	print_regs(&registers);
 	print_mem(&memory);
 	if (mode == 1) {
@@ -445,7 +450,7 @@ int Mem_Image_Handler(char line[])	//TraceLine is a the address of the first ele
 ****************************************************************************/
 void init(struct Memory *memory, struct Registers *registers){
 	for(int i = 0; i < LINECOUNTMAX; i++) {
-		memory->mem[i] = 0;		// Will this be needed in the long run?
+		memory->mem[i] = mem[i];		// Will this be needed in the long run?
 		memory->state[i] = 0;
 	}
 
@@ -489,6 +494,8 @@ int func_sim(struct instruction instr, struct Memory *memory, struct Registers *
 			break;
 	}
 
+	instr_count++;
+
 	return 0;
 }
 
@@ -526,11 +533,12 @@ int func_arith(struct instruction instr, struct Registers *registers){
 			registers->state[instr.rt] = 1;
 			break;
 		default:
-			printf("Invalid Opcode for selected Optype - %d\n", instr.code);
+			printf("Invalid Opcode for selected Optype(A) - %d\n", instr.code);
 			break;
 	}
 
-	pc += 4;
+	arith_count++;
+	pc++;
 
 	return 0;
 }
@@ -569,11 +577,12 @@ int func_logic(struct instruction instr, struct Registers *registers){
 			registers->state[instr.rt] = 1;
 			break;
 		default:
-			printf("Invalid Opcode for selected Optype - %d\n", instr.code);
+			printf("Invalid Opcode for selected Optype(L) - %d\n", instr.code);
 			break;
 	}
 
-	pc += 4;
+	logic_count++;
+	pc++;
 
 	return 0;
 }
@@ -589,21 +598,28 @@ int func_mem(struct instruction instr, struct Memory *memory, struct Registers *
 	int addr;
 	switch (instr.code) {
 		case LDW:
+			// printf("Opcode: LDW\tLine: %d\n", pc+1);
 			addr = (registers->regs[instr.rs] + instr.imm) / 4;
 			registers->regs[instr.rt] = memory->mem[addr];
 			registers->state[instr.rt] = 1;
 			break;
 		case STW:
+			// printf("Opcode: STW\tLine: %d\n", pc+1);
 			addr = (registers->regs[instr.rs] + instr.imm) / 4;
 			memory->mem[addr] = registers->regs[instr.rt];
 			memory->state[addr] = 1;
 			break;
 		default:
-			printf("Invalid Opcode for selected Optype - %d\n", instr.code);
+			printf("Invalid Opcode for selected Optype(M) - %d\n", instr.code);
 			break;
 	}
 
-	pc += 4;
+	// printf("Rs: R%d = %d\n", instr.rs, registers->regs[instr.rs]);
+	// printf("Rt: R%d = %d\n", instr.rt, registers->regs[instr.rt]);
+	// printf("Imm: %d\n", instr.imm);
+
+	mem_count++;
+	pc++;
 
 	return 0;
 }
@@ -616,29 +632,45 @@ int func_mem(struct instruction instr, struct Memory *memory, struct Registers *
 ** Description:
 ****************************************************************************/
 int func_cntrl(struct instruction instr, struct Registers *registers){
-	int new_pc = pc + 4;;
+	int new_pc = pc + 1;
 
 	switch (instr.code) {
 		case BZ:
 			if (registers->regs[instr.rs] == 0)
 				new_pc = pc + ((instr.rt<<16)+instr.imm);
+			// printf("Opcode: BZ\tLine: %d\n", pc+1);
 			break;
 		case BEQ:
 			if (registers->regs[instr.rs] == registers->regs[instr.rt])
 				new_pc = pc + (instr.imm);
+			// printf("Opcode: BEQ\tLine: %d\n", pc+1);
+			// printf("Rs: %d\n", registers->regs[instr.rs]);
+			// printf("Rt: %d\n", registers->regs[instr.rt]);
+			// printf("Imm: %d\n", instr.imm);
+			// printf("New Line: %d\n\n", new_pc+1);
 			break;
 		case JR:
-			new_pc = registers->regs[instr.rs];
+			new_pc = (registers->regs[instr.rs])/4;
+			// printf("Opcode: JR\tLine: %d\n", pc+1);
 			break;
 		case HALT:
 			halt = 1;
+			// new_pc = pc;
+			// printf("Opcode: Halt\tLine: %d\n", pc+1);
 			break;
 		default:
-			printf("Invalid Opcode for selected Optype - %d\n", instr.code);
-			pc += 4;
+			printf("Invalid Opcode for selected Optype(C) - %d\n", instr.code);
+			pc++;
 			break;
 	}
 
+	// Test Print
+	// printf("Rs: R%d = %d\n", instr.rs, registers->regs[instr.rs]);
+	// printf("Rt: R%d = %d\n", instr.rt, registers->regs[instr.rt]);
+	// printf("Imm: %d\n", instr.imm);
+	// printf("New Line: %d\n\n", new_pc+1);
+
+	cntrl_count++;
 	pc = new_pc;
 
 	return 0;
