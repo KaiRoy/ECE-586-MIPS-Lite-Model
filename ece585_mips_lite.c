@@ -128,7 +128,7 @@ int main(void) {
 	/*----- Initial -----*/
 	//Initial Print
 	printf("\nProgram Start\n\n");
-	
+
 	//Initialization
 	struct Memory memory;
 	struct Registers registers;
@@ -142,8 +142,8 @@ int main(void) {
 	scanf("%s", fileName);
 
 	FILE *fp;   //file pointer
-	// fp = fopen(fileName, "r");				//User Input Name
-	fp = fopen("MemoryImage.txt", "r");		//Set Name
+	 fp = fopen(fileName, "r");				//User Input Name
+//	fp = fopen("MemoryImage.txt", "r");		//Set Name
 
 	if (fp == NULL)
 	{
@@ -229,7 +229,7 @@ int main(void) {
 
 		instr_arr[i] = components;
     }
-	
+
 	//Close File
 	if (fclose(fp) == EOF)
 	{
@@ -248,6 +248,8 @@ int main(void) {
 	int count = 0;
 	while (!halt && (pc < 1024)) {
 		instr = instr_arr[pc];
+//		if (instr.rd == 3 || instr.rt == 3)
+//			printf("R3 - Line %d\n", pc+1);
 		func_sim(instr, &memory, &registers);
 		// Insert Timing/Pipeline Simulator ----------------------------
 	}
@@ -287,7 +289,7 @@ int main(void) {
 ** Version: v1.0.0
 ** Description: Checks for blank lines in memory image
 ****************************************************************************/
-int containshex(char string[]) 
+int containshex(char string[])
 {
     int does = 0;
     for (int i = 0; i < strlen(string); i++)
@@ -407,7 +409,7 @@ int TextToHex(char value)
 ** Function: Mem_Image_Handler
 ** Authors: Nick Allmeyer
 ** Version: v1.0.0
-** Description: Function converts a single line of text from the memory image 
+** Description: Function converts a single line of text from the memory image
 ** to an integer and stores that integer in a memory array
 ****************************************************************************/
 int Mem_Image_Handler(char line[])	//TraceLine is a the address of the first element of a string of unknown length
@@ -549,7 +551,7 @@ int func_logic(struct instruction instr, struct Registers *registers){
 			registers->state[instr.rd] = 1;
 			break;
 		case ANDI:
-			registers->regs[instr.rd] = registers->regs[instr.rs] & instr.imm;
+			registers->regs[instr.rt] = registers->regs[instr.rs] & instr.imm;
 			registers->state[instr.rt] = 1;
 			break;
 		case XOR:
@@ -557,7 +559,7 @@ int func_logic(struct instruction instr, struct Registers *registers){
 			registers->state[instr.rd] = 1;
 			break;
 		case XORI:
-			registers->regs[instr.rd] = registers->regs[instr.rs] ^ instr.imm;
+			registers->regs[instr.rt] = registers->regs[instr.rs] ^ instr.imm;
 			registers->state[instr.rt] = 1;
 			break;
 		default:
@@ -615,7 +617,7 @@ int func_cntrl(struct instruction instr, struct Registers *registers){
 	switch (instr.code) {
 		case BZ:
 			if (registers->regs[instr.rs] == 0)
-				new_pc = pc + ((instr.rt<<16)+instr.imm);
+				new_pc = pc + (instr.imm);
 			break;
 		case BEQ:
 			if (registers->regs[instr.rs] == registers->regs[instr.rt])
@@ -633,6 +635,7 @@ int func_cntrl(struct instruction instr, struct Registers *registers){
 			break;
 	}
 
+//	new_pc = pc + 1;
 	cntrl_count++;
 	pc = new_pc;
 
