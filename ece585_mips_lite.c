@@ -61,17 +61,8 @@ struct instruction {
 	bool 	ReadReg2;
 };
 
-/*Structs*/		// Struct used in the file_work.c code, could convert the code to use the instruction struct?
-typedef struct
-{
-    int Opcode;
-    int Rs;
-    int Rt;
-    int Rd;
-    int Immediate;
 
-}type_components;
-
+// Memory Structures made by Kamal Smith
 struct Memory{//Holds array of of lines of memory and the size
 	signed int mem[LINECOUNTMAX];//This will have the current memory that we are working with
     int state[LINECOUNTMAX];
@@ -169,7 +160,7 @@ int main(void) {
     struct instruction components;
 
     //Extract the string from the text file and place it into the memory array
-    while (fgets(line, MAXLEN, fp) != NULL) //fgets terminates string line with '\0'
+    while (fgets(line, MAXLEN, fp) != NULL) //fgets terminates string line with '\0'	//Nick Allmeyer
     {
         line_count++; //increment the line counter for each line read
 
@@ -194,7 +185,7 @@ int main(void) {
     }
 
 	//Iterate through the memory array, writing to registers/components line by line
-    for (int i = 0; i < line_count; i++)
+    for (int i = 0; i < line_count; i++)	//Made by Nick Allmeyer, Jesus Zavala
     {
 		components.code = (mem[i] & Opcode_Mask) >> 26;
 		components.rs = (mem[i] & Rs_Mask) >> 21;
@@ -292,7 +283,7 @@ int main(void) {
 *************************************************************************************************************/
 /****************************************************************************
 ** Function: containshex
-** Authors: Kai Roy
+** Authors: Nick Allmeyer
 ** Version: v1.0.0
 ** Description: Checks for blank lines in memory image
 ****************************************************************************/
@@ -342,7 +333,7 @@ int containshex(char string[])
 
 /****************************************************************************
 ** Function: TextToHex
-** Authors: Kai Roy
+** Authors: Nick Allmeyer
 ** Version: v1.0.0
 ** Description: Converts a character to an integer
 ****************************************************************************/
@@ -414,7 +405,7 @@ int TextToHex(char value)
 
 /****************************************************************************
 ** Function: Mem_Image_Handler
-** Authors: Kai Roy
+** Authors: Nick Allmeyer
 ** Version: v1.0.0
 ** Description: Function converts a single line of text from the memory image 
 ** to an integer and stores that integer in a memory array
@@ -437,7 +428,7 @@ int Mem_Image_Handler(char line[])	//TraceLine is a the address of the first ele
 
 /****************************************************************************
 ** Function: init
-** Authors: Kai Roy
+** Authors: Kamal Smith
 ** Version: v1.0.0
 ** Description:
 ****************************************************************************/
@@ -494,7 +485,7 @@ int func_sim(struct instruction instr, struct Memory *memory, struct Registers *
 
 
 /****************************************************************************
-** Function: func_sim
+** Function: func_arith
 ** Authors: Kai Roy
 ** Version: v1.0.0
 ** Description:
@@ -538,7 +529,7 @@ int func_arith(struct instruction instr, struct Registers *registers){
 
 
 /****************************************************************************
-** Function: func_sim
+** Function: func_logic
 ** Authors: Kai Roy
 ** Version: v1.0.0
 ** Description:
@@ -582,7 +573,7 @@ int func_logic(struct instruction instr, struct Registers *registers){
 
 
 /****************************************************************************
-** Function: func_sim
+** Function: func_mem
 ** Authors: Kai Roy
 ** Version: v1.0.0
 ** Description:
@@ -613,7 +604,7 @@ int func_mem(struct instruction instr, struct Memory *memory, struct Registers *
 
 
 /****************************************************************************
-** Function: func_sim
+** Function: func_cntrl
 ** Authors: Kai Roy
 ** Version: v1.0.0
 ** Description:
@@ -705,7 +696,7 @@ void menu() {
 
 /****************************************************************************
 ** Function: print_regs
-** Authors: Kai Roy
+** Authors: Kamal Smith
 ** Version: v1.0.0
 ** Description: Print the contents of the registers
 ****************************************************************************/
@@ -720,7 +711,7 @@ void print_regs(struct Registers *registers){
 
 /****************************************************************************
 ** Function: print_regs
-** Authors: Kai Roy
+** Authors: Kamal Smith
 ** Version: v1.0.0
 ** Description: Print the contents of the memory
 ****************************************************************************/
