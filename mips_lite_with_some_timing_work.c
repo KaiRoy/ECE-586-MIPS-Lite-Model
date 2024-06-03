@@ -924,9 +924,9 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
         EXE_MEM_flag = 0;
 
         //if halt is in the last stage
-        if(WB_stage.code == HALT)
+        if(new_instruction.code == HALT)
         {
-            clk_cnt += 4;
+            clk_cnt += 5;
 			return 0;
         }
 
