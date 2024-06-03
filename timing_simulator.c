@@ -30,6 +30,7 @@ const int Rt_Mask = 0x001F0000;
 const int Rd_Mask = 0x0000F800;
 const int Immediate_Mask = 0x0000FFFF;
 
+
 /*Function Prototypes*/
 int containshex(char string[]); //checks for blank lines.
 int Mem_Image_Handler(char line[]); //Converts a line in the image file to an integer and stores in the memory array
@@ -100,11 +101,14 @@ typedef struct
 } instruction;
 
 /*Global Variables*/
-int clk_cnt_no_forwarding = 0;
-int clk_cnt_with_forwarding = 0;
+int clk_cnt = 0; //only one clock
+//int clk_cnt_with_forwarding = 0;
 
 int stalls_no_forwarding = 0;
 int stalls_with_forwarding = 0;
+
+int ID_EXE_flag;
+int EXE_MEM_flag;
 
 //instruction *pipeline_stage_ptr[PIPELINESIZE]; //array of pointers to structs. records what the stage contains, i.e. what is in IF stage, ID stage, EXE stage, etc.
 //instruction pipeline[PIPELINESIZE]; //circular buffer, each entry is an instruction
@@ -200,7 +204,7 @@ int main()
 
 
     //Iterate through the memory array, writing to registers/components line by line
-    for (int i = 0; i < line_count; i++)
+    running: for (int i = 0; i < line_count; i++)
     {
         //Get the opcode, place values in components
         new_instruction.OpCode = (mem[i] & Opcode_Mask) >> 26;
@@ -223,79 +227,138 @@ int main()
 
         //We now have the new instruction struct filled, next place it in the pipeline
 
-        //Increment both clocks
-        clk_cnt_no_forwarding++;
-        clk_cnt_with_forwarding++;
-
-
-         if(1)
-         {
-             if(IF_stage.OpCode == RTYPE) //IF is R type. Destination reg is Rd
-             {
-                 if(1) //Check ID stage
-                 {
-                     //Check instruction in ID stage
-                    if (ID_stage.OpCode == RTYPE); //ID is Rtype destination register is Rd
-                    {
-                        if(IF_stage.Rs == ID_stage.Rd || IF_stage.Rt == ID_stage.Rd) //new instruction source matches old instruction destination, RAW
-                        {
-                            stalls_no_forwarding += 2; //add two stalls
-                        }
-                    }
-                    else //ID is ITYPE so destination register is Rt
-                    {
-                        if(IF_stage.Rs == ID_stage.Rd) //RAW
-                        {
-                            stalls_no_forwarding += 2;
-                        }
-                    }
-                 }
-                 if(1) //Check EXE stage
-                 {
-                    if (ID_stage.OpCode == RTYPE);
-                    {
-                        if(IF_stage.Rs == ID_stage.Rd || IF_stage.Rt == ID_stage.Rd) //new instruction source matches old instruction destination, RAW
-                        {
-                            stalls_no_forwarding += 2; //add two stalls
-                        }
-                    }
-                    else //ITYPE
-                    {
-                        if(IF_stage.Rs == ID_stage.Rd) //RAW
-                        {
-                            stalls_no_forwarding += 2;
-                        }
-                    }
-                 }
-
-             }
-             else //IF is ITPYE, Destination reg is Rt
-             {
-                if(1) //Check ID stage
-                {
-
-                }
-                if(1)
-             }
-         }
-         if (0) //Branch mispredict
-         {
-             printf("Branch misprediction detected");
-         }
-         else //No control hazards, shift instructions through the pipeline
-         {
+        //Move instructions to the point where hazard detection can begin
+        while(clk_cnt < 3)
+        {   //fill the pipeline to the point we can start to detect hazards
+            //Order is important here
              WB_stage = MEM_stage; //MEM to WB
              MEM_stage = EXE_stage; //EXE to MEM
              EXE_stage = ID_stage; //ID to EXE
              ID_stage = IF_stage; //IF to ID
              IF_stage = new_instruction; //new instruction enters the pipeline
 
-         }
+             clk_cnt++;
+             goto running;
+        }
+        //reset  the flags for hazard detection
+        ID_EXE_flag = 0;
+        EXE_MEM_flag = 0;
 
+        hazard: //checking ID stage compared to EXE and MEM
+            if(ID_stage.OpCode == RTYPE )
+            {
+                if(1) //check exe stage
+                {
+                    if(EXE_stage.OpCode == RTYPE)
+                    {
+                        //compare exe destination with id source
+                        if (EXE_stage.Rd == ID_stage.Rs || EXE_stage.Rd == ID_stage.Rt)
+                        {
+                            ID_EXE_flag = 1;
+                        }
+                    }
+                    else //instruction_type(EXE_stage) == ITYPE
+                    {
+                        //compare exe destination with id source
+                        if (EXE_stage.Rt == ID_stage.Rs || EXE_stage.Rt == ID_stage.Rs)
+                        {
+                            ID_EXE_flag = 1;
+                        }
+                    }
+                }
+                if(1) //check mem stage
+                {
+                    if(MEM_stage.OpCode == RTYPE)
+                    {
+                        //compare mem destination with id source
+                        if (MEM_stage.Rd == ID_stage.Rs || MEM_stage.Rd == ID_stage.Rt)
+                        {
+                            EXE_MEM_flag = 1;
+                        }
+                    }
+                    else //instruction_type(mem_stage) == ITYPE
+                    {
+                        //compare mem destination with id source
+                        if (MEM_stage.Rt == ID_stage.Rs || MEM_stage.Rt == ID_stage.Rs)
+                        {
+                            EXE_MEM_flag = 1;
+                        }
+                    }
+                }
 
+            }
+            else //instruction_type(ID_stage) == ITYPE
+            {
+                if(1) //check exe stage
+                {
+                    if(EXE_stage.OpCode == RTYPE)
+                    {
+                        //compare exe destination with id source
+                        if (EXE_stage.Rd == ID_stage.Rs)
+                        {
+                            ID_EXE_flag = 1;
+                        }
+                    }
+                    else //instruction_type(EXE_stage) == ITYPE
+                    {
+                        //compare exe destination with id source
+                        if (EXE_stage.Rt == ID_stage.Rs)
+                        {
+                            ID_EXE_flag = 1;
+                        }
+                    }
+                }
+                if(1) //check mem stage
+                {
+                    if(MEM_stage.OpCode == RTYPE)
+                    {
+                        //compare mem destination with id source
+                        if (MEM_stage.Rd == ID_stage.Rs)
+                        {
+                            EXE_MEM_flag = 1;
+                        }
+                    }
+                    else //instruction_type(mem_stage) == ITYPE
+                    {
+                        //compare mem destination with id source
+                        if (MEM_stage.Rt == ID_stage.Rs)
+                        {
+                            EXE_MEM_flag = 1;
+                        }
+                    }
+                }
+            }
 
+            //compute stall cycles from hazard
+            if(ID_EXE_flag == 1 && EXE_MEM_flag == 0)
+            {
+                stalls_no_forwarding += 2;
+            }
+            else if(ID_EXE_flag == 1 && EXE_MEM_flag == 1)
+            {
+                stalls_no_forwarding += 2;
+            }
+            else if(ID_EXE_flag == 0 && EXE_MEM_flag == 1)
+            {
+                stalls_no_forwarding += 1;
+            }
+            else //no hazard
+            {
+                goto normal;
+            }
 
+        branch: //branch
+            //
 
+        normal:
+            clk_cnt++;
+
+            //Shift instructions through pipeline. Order is important here
+            WB_stage = MEM_stage; //MEM to WB
+            MEM_stage = EXE_stage; //EXE to MEM
+            EXE_stage = ID_stage; //ID to EXE
+            ID_stage = IF_stage; //IF to ID
+            IF_stage = new_instruction; //new instruction enters the pipeline
     }
 
     //Close the file
