@@ -867,238 +867,182 @@ void print_struct(struct instruction stage)
 //timing simulator
 int timing_sim(struct instruction instr, struct Memory *memory, struct Registers *registers)
 {
+	new_instruction = instr;
 
-    //Declaring structs for each pipeline stage
-    // struct instruction new_instruction;
-    // struct instruction IF_stage;
-    // struct instruction ID_stage;
-    // struct instruction EXE_stage;
-    // struct instruction MEM_stage;
-    // struct instruction WB_stage;
-    // struct instruction NOP;
+	//Shift instructions through pipeline. Order is important here
+	WB_stage = MEM_stage; //MEM to WB
+	MEM_stage = EXE_stage; //EXE to MEM
+	EXE_stage = ID_stage; //ID to EXE
+	ID_stage = IF_stage; //IF to ID
+	IF_stage = new_instruction; //new instruction enters the pipeline
 
-    //Initialize stages of the pipeline
-    // init_pipeline(&IF_stage, &ID_stage, &EXE_stage, &MEM_stage, &WB_stage, &NOP);
+	clk_cnt++;
 
-    // running: 
-    // for (int i = 0; i < line_count; i++)
-    // {
-        //Get the opcode, place values in components
-        // new_instruction.code = (mem[i] & Opcode_Mask) >> 26;
-        // if (instruction_type(new_instruction.code) == RTYPE)
-        // {
-        //     new_instruction.rs = (mem[i] & Rs_Mask) >> 21;
-        //     new_instruction.rt = (mem[i] & Rt_Mask) >> 16;
-        //     new_instruction.rd = (mem[i] & Rd_Mask) >> 11;
-        // }
-        // else if (instruction_type(new_instruction.code) == ITYPE)
-        // {
-        //     new_instruction.rs = (mem[i] & Rs_Mask) >> 21;
-        //     new_instruction.rt = (mem[i] & Rt_Mask) >> 16;
-        //     new_instruction.imm = (mem[i] & Immediate_Mask);
-        // }
-        // else
-        // {
-        //     printf("ERROR: Invalid Opcode\n");
-        // }
-        
-        new_instruction = instr;
+	if (MEM_stage.code == LDW, MEM_stage.code == STW) {
+		total_stalls_no_forwarding +=1;
+	}
 
-        
-        // printf("new inst\n");
-        // print_struct(new_instruction);
-        // printf("IF\n");
-        // print_struct(IF_stage);
-        // printf("ID\n");
-        // print_struct(ID_stage);
-        // printf("exe\n");
-        // print_struct(EXE_stage);
-        // printf("mem\n");
-        // print_struct(MEM_stage);
-        // printf("wb\n");
-        // print_struct(WB_stage);
-        
+	// stalls_no_forwarding = 0;
+	if(IF_stage.code == HALT)
+	{
+		clk_cnt += 4;
+		return 0;
+	}
+	
+	//reset  the flags for hazard detection
+	ID_EXE_flag = 0;
+	EXE_MEM_flag = 0;
 
-        //reset  the flags for hazard detection
-        ID_EXE_flag = 0;
-        EXE_MEM_flag = 0;
+	if (pc != old_pc+1) {
+		clk_cnt +=2 ;
+		// goto branch;
+	}
 
-        //if halt is in the last stage
-        if(new_instruction.code == HALT)
-        {
-            clk_cnt += 5;
+	old_pc = pc;
+
+	hazard_detection: //checking ID stage compared to EXE and MEM
+		if (ID_stage.code == NNOP) {
 			return 0;
-        }
-
-        //check for executed branch/jump instruction
-        // if(EXE_stage.code == BZ || EXE_stage.code == BEQ || EXE_stage.code == JR)
-        // {
-        //     goto branch;
-        // }
-		if (pc != old_pc+1) {
-			goto branch;
 		}
-
-        hazard_detection: //checking ID stage compared to EXE and MEM
-            if (ID_stage.code == NNOP) {
-                goto normal;
-            }
-            else if(instruction_type(ID_stage.code) == RTYPE )
-            {
-                if(1) //check exe stage
-                {
-                    if(EXE_stage.code == NNOP){
-                        ID_EXE_flag = 0;
-                    }
-                    else if(instruction_type(EXE_stage.code) == RTYPE)
-                    {
-                        //compare exe destination with id source
-                        if (EXE_stage.rd == ID_stage.rs || EXE_stage.rd == ID_stage.rt)
-                        {
-                            ID_EXE_flag = 1;
-                        }
-                    }
-                    else //instruction_type(EXE_stage) == ITYPE
-                    {
-                        //compare exe destination with id source
-                        if (EXE_stage.rt == ID_stage.rs || EXE_stage.rt == ID_stage.rs)
-                        {
-                            ID_EXE_flag = 1;
-                        }
-                    }
-                }
-                if(1) //check mem stage
-                {
-                    if(MEM_stage.code == NNOP) {
-                        EXE_MEM_flag = 0;
-                    }
-                    else if(instruction_type(MEM_stage.code) == RTYPE)
-                    {
-                        //compare mem destination with id source
-                        if (MEM_stage.rd == ID_stage.rs || MEM_stage.rd == ID_stage.rt)
-                        {
-                            EXE_MEM_flag = 1;
-                        }
-                    }
-                    else //instruction_type(mem_stage) == ITYPE
-                    {
-                        //compare mem destination with id source
-                        if (MEM_stage.rt == ID_stage.rs || MEM_stage.rt == ID_stage.rs)
-                        {
-                            EXE_MEM_flag = 1;
-                        }
-                    }
-                }
-
-            }
-            else //instruction_type(ID_stage) == ITYPE
-            {
-                if(1) //check exe stage
-                {
-                    if(EXE_stage.code == NNOP){
-                        ID_EXE_flag = 0;
-                    }
-                    else if(instruction_type(EXE_stage.code) == RTYPE)
-                    {
-                        //compare exe destination with id source
-                        if (EXE_stage.rd == ID_stage.rs)
-                        {
-                            ID_EXE_flag = 1;
-                        }
-                    }
-                    else //instruction_type(EXE_stage) == ITYPE
-                    {
-                        //compare exe destination with id source
-                        if (EXE_stage.rt == ID_stage.rs)
-                        {
-                            ID_EXE_flag = 1;
-                        }
-                    }
-                }
-                if(1) //check mem stage
-                {
-                    if(MEM_stage.code == NNOP) {
-                        EXE_MEM_flag = 0;
-                    }
-                    else if(instruction_type(MEM_stage.code) == RTYPE)
-                    {
-                        //compare mem destination with id source
-                        if (MEM_stage.rd == ID_stage.rs)
-                        {
-                            EXE_MEM_flag = 1;
-                        }
-                    }
-                    else //instruction_type(mem_stage) == ITYPE
-                    {
-                        //compare mem destination with id source
-                        if (MEM_stage.rt == ID_stage.rs)
-                        {
-                            EXE_MEM_flag = 1;
-                        }
-                    }
-                }
-            }
-
-			if (MEM_stage.code == LDW, MEM_stage.code == STW) {
-				stalls_no_forwarding +=1;
+		else if(instruction_type(ID_stage.code) == RTYPE )
+		{
+			if(1) //check exe stage
+			{
+				if(EXE_stage.code == NNOP){
+					ID_EXE_flag = 0;
+				}
+				else if(instruction_type(EXE_stage.code) == RTYPE)
+				{
+					//compare exe destination with id source
+					if (EXE_stage.rd == ID_stage.rs || EXE_stage.rd == ID_stage.rt)
+					{
+						ID_EXE_flag = 1;
+					}
+				}
+				else //instruction_type(EXE_stage) == ITYPE
+				{
+					//compare exe destination with id source
+					if (EXE_stage.rt == ID_stage.rs || EXE_stage.rt == ID_stage.rs)
+					{
+						ID_EXE_flag = 1;
+					}
+				}
+			}
+			if(1) //check mem stage
+			{
+				if(MEM_stage.code == NNOP) {
+					EXE_MEM_flag = 0;
+				}
+				else if(instruction_type(MEM_stage.code) == RTYPE)
+				{
+					//compare mem destination with id source
+					if (MEM_stage.rd == ID_stage.rs || MEM_stage.rd == ID_stage.rt)
+					{
+						EXE_MEM_flag = 1;
+					}
+				}
+				else //instruction_type(mem_stage) == ITYPE
+				{
+					//compare mem destination with id source
+					if (MEM_stage.rt == ID_stage.rs || MEM_stage.rt == ID_stage.rs)
+					{
+						EXE_MEM_flag = 1;
+					}
+				}
 			}
 
-            //reset stall amount
-            stalls_no_forwarding = 0;
+		}
+		else //instruction_type(ID_stage) == ITYPE
+		{
+			if(1) //check exe stage
+			{
+				if(EXE_stage.code == NNOP){
+					ID_EXE_flag = 0;
+				}
+				else if(instruction_type(EXE_stage.code) == RTYPE)
+				{
+					//compare exe destination with id source
+					if (EXE_stage.rd == ID_stage.rs)
+					{
+						ID_EXE_flag = 1;
+					}
+				}
+				else //instruction_type(EXE_stage) == ITYPE
+				{
+					//compare exe destination with id source
+					if (EXE_stage.rt == ID_stage.rs)
+					{
+						ID_EXE_flag = 1;
+					}
+				}
+			}
+			if(1) //check mem stage
+			{
+				if(MEM_stage.code == NNOP) {
+					EXE_MEM_flag = 0;
+				}
+				else if(instruction_type(MEM_stage.code) == RTYPE)
+				{
+					//compare mem destination with id source
+					if (MEM_stage.rd == ID_stage.rs)
+					{
+						EXE_MEM_flag = 1;
+					}
+				}
+				else //instruction_type(mem_stage) == ITYPE
+				{
+					//compare mem destination with id source
+					if (MEM_stage.rt == ID_stage.rs)
+					{
+						EXE_MEM_flag = 1;
+					}
+				}
+			}
+		}
 
-            //compute stall cycles from hazard
-            if(ID_EXE_flag == 1 && EXE_MEM_flag == 0)
-            {
-                stalls_no_forwarding += 2;
-            }
-            else if(ID_EXE_flag == 1 && EXE_MEM_flag == 1)
-            {
-                stalls_no_forwarding += 2;
-            }
-            else if(ID_EXE_flag == 0 && EXE_MEM_flag == 1)
-            {
-                stalls_no_forwarding += 1;
-            }
-            else //no hazard
-            {
-                // printf("No Hazard\n");
-                goto normal;
-            }
+		//reset stall amount
+		stalls_no_forwarding = 0;
 
-            //calculate total number of stalls by the program
-            total_stalls_no_forwarding += stalls_no_forwarding;
+		//compute stall cycles from hazard
+		if(ID_EXE_flag == 1 && EXE_MEM_flag == 0)
+		{
+			stalls_no_forwarding += 2;
+		}
+		else if(ID_EXE_flag == 1 && EXE_MEM_flag == 1)
+		{
+			stalls_no_forwarding += 2;
+		}
+		else if(ID_EXE_flag == 0 && EXE_MEM_flag == 1)
+		{
+			stalls_no_forwarding += 1;
+		}
+		else //no hazard
+		{
+			// printf("No Hazard\n");
+			return 0;
+		}
 
-            //insert NOPS into EX stage
-            for (int i = 0; i < stalls_no_forwarding; i++)
-            {
-                //clk_cnt++;
+		//calculate total number of stalls by the program
+		total_stalls_no_forwarding += stalls_no_forwarding;
 
-                IF_stage = IF_stage;
-                ID_stage = ID_stage;
-                EXE_stage = NOP;
-                WB_stage = MEM_stage;
-                MEM_stage = EXE_stage;
-            }
-            goto normal;
+		//insert NOPS into EX stage
+		for (int i = 0; i < stalls_no_forwarding; i++)
+		{
+			//clk_cnt++;
+
+			IF_stage = IF_stage;
+			ID_stage = ID_stage;
+			EXE_stage = NOP;
+			WB_stage = MEM_stage;
+			MEM_stage = EXE_stage;
+		}
+		// goto normal;
 
 
-        branch: //branch
-            {
-                clk_cnt+=2;
-            }
-
-        normal:
-            clk_cnt++;
-            // stalls_no_forwarding = 0;
-
-            //Shift instructions through pipeline. Order is important here
-            WB_stage = MEM_stage; //MEM to WB
-            MEM_stage = EXE_stage; //EXE to MEM
-            EXE_stage = ID_stage; //ID to EXE
-            ID_stage = IF_stage; //IF to ID
-            IF_stage = new_instruction; //new instruction enters the pipeline
-            old_pc = pc;
-    // }
+	// branch: //branch
+	// 	{
+	// 		clk_cnt+=2;
+	// 	}
 
     return 0;
 }
