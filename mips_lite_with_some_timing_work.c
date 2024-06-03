@@ -49,7 +49,8 @@ enum opcode {
     BZ      = 0x0E, 	//001110
     BEQ     = 0x0F, 	//001111
     JR      = 0x10, 	//010000
-    HALT    = 0x11  	//010001
+    HALT    = 0x11,  	//010001
+    NNOP     = 0xFF
 };
 
 struct instruction {
@@ -90,6 +91,7 @@ int cntrl_count = 0;
 int mode;
 int halt = 0;
 int pc = 0;
+int old_pc = 0;
 
 int line_count; //made global so it's visible to the timing simulator
 
@@ -101,6 +103,14 @@ const int Rd_Mask = 0x0000F800;
 const int Immediate_Mask = 0x0000FFFF;
 
 struct instruction instr_arr[LINECOUNTMAX];
+
+struct instruction new_instruction;
+struct instruction IF_stage;
+struct instruction ID_stage;
+struct instruction EXE_stage;
+struct instruction MEM_stage;
+struct instruction WB_stage;
+struct instruction NOP;
 
 //Timing Related
 int clk_cnt = 0; //only one clock
@@ -268,6 +278,7 @@ int main(void) {
 	menu();
 
 	// Run Instructions
+	init_pipeline(&IF_stage, &ID_stage, &EXE_stage, &MEM_stage, &WB_stage, &NOP);
 	struct instruction instr;
 	int count = 0;
 	while (!halt && (pc < 1024)) {
@@ -278,6 +289,8 @@ int main(void) {
 		// Insert Timing/Pipeline Simulator ----------------------------
 		timing_sim(instr, &memory, &registers);
 	}
+	
+// 	timing_sim(instr, &memory, &registers);
 
 
 	/*----- Print Results -----*/
@@ -295,6 +308,7 @@ int main(void) {
 
 	if (mode == 1) {
 		// Insert UI function for Timing (no forwarding) ----------------
+		printf("\nClock Count = %d\n", clk_cnt);
 		printf("Stall count no forwarding: %d\n", total_stalls_no_forwarding);
         printf("Total number of clock cycles no forwarding: %d\n", clk_cnt + total_stalls_no_forwarding);
 
@@ -769,37 +783,37 @@ void print_mem(struct Memory *memory){
 void init_pipeline(struct instruction *IF, struct instruction *ID, struct instruction *EXE, struct instruction *MEM, struct instruction *WB, struct instruction *NOP)
 {
     //*(IF).OpCode same as IF->OpCode
-    IF->code = 0x00;
+    IF->code = 0xFF;
     IF->rs = 33; //impossible value for a register in mips
     IF->rt = 34;
     IF->rd = 35;
     IF->imm = 0;
 
-    ID->code = 0x00;
+    ID->code = 0xFF;
     ID->rs = 36; //impossible value for a register in mips
     ID->rt = 37;
     ID->rd = 38;
     ID->imm = 0;
 
-    EXE->code = 0x00;
+    EXE->code = 0xFF;
     EXE->rs = 39; //impossible value for a register in mips
     EXE->rt = 40;
     EXE->rd = 41;
     EXE->imm = 0;
 
-    MEM->code = 0x00;
+    MEM->code = 0xFF;
     MEM->rs = 42; //impossible value for a register in mips
     MEM->rt = 43;
     MEM->rd = 44;
     MEM->imm = 0;
 
-    WB->code = 0x00;
+    WB->code = 0xFF;
     WB->rs = 45; //impossible value for a register in mips
     WB->rt = 46;
     WB->rd = 47;
     WB->imm = 0;
 
-    NOP->code = 0x00;
+    NOP->code = 0xFF;
     NOP->rs = 0; //impossible value for a register in mips
     NOP->rt = 0;
     NOP->rd = 0;
@@ -855,52 +869,55 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
 {
 
     //Declaring structs for each pipeline stage
-    struct instruction new_instruction;
-    struct instruction IF_stage;
-    struct instruction ID_stage;
-    struct instruction EXE_stage;
-    struct instruction MEM_stage;
-    struct instruction WB_stage;
-    struct instruction NOP;
+    // struct instruction new_instruction;
+    // struct instruction IF_stage;
+    // struct instruction ID_stage;
+    // struct instruction EXE_stage;
+    // struct instruction MEM_stage;
+    // struct instruction WB_stage;
+    // struct instruction NOP;
 
     //Initialize stages of the pipeline
-    init_pipeline(&IF_stage, &ID_stage, &EXE_stage, &MEM_stage, &WB_stage, &NOP);
+    // init_pipeline(&IF_stage, &ID_stage, &EXE_stage, &MEM_stage, &WB_stage, &NOP);
 
-    running: for (int i = 0; i < line_count; i++)
-    {
+    // running: 
+    // for (int i = 0; i < line_count; i++)
+    // {
         //Get the opcode, place values in components
-        new_instruction.code = (mem[i] & Opcode_Mask) >> 26;
-        if (instruction_type(new_instruction.code) == RTYPE)
-        {
-            new_instruction.rs = (mem[i] & Rs_Mask) >> 21;
-            new_instruction.rt = (mem[i] & Rt_Mask) >> 16;
-            new_instruction.rd = (mem[i] & Rd_Mask) >> 11;
-        }
-        else if (instruction_type(new_instruction.code) == ITYPE)
-        {
-            new_instruction.rs = (mem[i] & Rs_Mask) >> 21;
-            new_instruction.rt = (mem[i] & Rt_Mask) >> 16;
-            new_instruction.imm = (mem[i] & Immediate_Mask);
-        }
-        else
-        {
-            printf("ERROR: Invalid Opcode\n");
-        }
+        // new_instruction.code = (mem[i] & Opcode_Mask) >> 26;
+        // if (instruction_type(new_instruction.code) == RTYPE)
+        // {
+        //     new_instruction.rs = (mem[i] & Rs_Mask) >> 21;
+        //     new_instruction.rt = (mem[i] & Rt_Mask) >> 16;
+        //     new_instruction.rd = (mem[i] & Rd_Mask) >> 11;
+        // }
+        // else if (instruction_type(new_instruction.code) == ITYPE)
+        // {
+        //     new_instruction.rs = (mem[i] & Rs_Mask) >> 21;
+        //     new_instruction.rt = (mem[i] & Rt_Mask) >> 16;
+        //     new_instruction.imm = (mem[i] & Immediate_Mask);
+        // }
+        // else
+        // {
+        //     printf("ERROR: Invalid Opcode\n");
+        // }
+        
+        new_instruction = instr;
 
-        /*
-        printf("new inst\n");
-        print_struct(new_instruction);
-        printf("IF\n");
-        print_struct(IF_stage);
-        printf("ID\n");
-        print_struct(ID_stage);
-        printf("exe\n");
-        print_struct(EXE_stage);
-        printf("mem\n");
-        print_struct(MEM_stage);
-        printf("wb\n");
-        print_struct(WB_stage);
-        */
+        
+        // printf("new inst\n");
+        // print_struct(new_instruction);
+        // printf("IF\n");
+        // print_struct(IF_stage);
+        // printf("ID\n");
+        // print_struct(ID_stage);
+        // printf("exe\n");
+        // print_struct(EXE_stage);
+        // printf("mem\n");
+        // print_struct(MEM_stage);
+        // printf("wb\n");
+        // print_struct(WB_stage);
+        
 
         //reset  the flags for hazard detection
         ID_EXE_flag = 0;
@@ -909,21 +926,31 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
         //if halt is in the last stage
         if(WB_stage.code == HALT)
         {
-            break;
+            clk_cnt += 4;
+			return 0;
         }
 
         //check for executed branch/jump instruction
-        if(EXE_stage.code == BZ || EXE_stage.code == BEQ || EXE_stage.code == JR)
-        {
-            goto branch;
-        }
+        // if(EXE_stage.code == BZ || EXE_stage.code == BEQ || EXE_stage.code == JR)
+        // {
+        //     goto branch;
+        // }
+		if (pc != old_pc+1) {
+			goto branch;
+		}
 
         hazard_detection: //checking ID stage compared to EXE and MEM
-            if(instruction_type(ID_stage.code) == RTYPE )
+            if (ID_stage.code == NNOP) {
+                goto normal;
+            }
+            else if(instruction_type(ID_stage.code) == RTYPE )
             {
                 if(1) //check exe stage
                 {
-                    if(instruction_type(EXE_stage.code) == RTYPE)
+                    if(EXE_stage.code == NNOP){
+                        ID_EXE_flag = 0;
+                    }
+                    else if(instruction_type(EXE_stage.code) == RTYPE)
                     {
                         //compare exe destination with id source
                         if (EXE_stage.rd == ID_stage.rs || EXE_stage.rd == ID_stage.rt)
@@ -942,7 +969,10 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
                 }
                 if(1) //check mem stage
                 {
-                    if(instruction_type(MEM_stage.code) == RTYPE)
+                    if(MEM_stage.code == NNOP) {
+                        EXE_MEM_flag = 0;
+                    }
+                    else if(instruction_type(MEM_stage.code) == RTYPE)
                     {
                         //compare mem destination with id source
                         if (MEM_stage.rd == ID_stage.rs || MEM_stage.rd == ID_stage.rt)
@@ -965,7 +995,10 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
             {
                 if(1) //check exe stage
                 {
-                    if(instruction_type(EXE_stage.code) == RTYPE)
+                    if(EXE_stage.code == NNOP){
+                        ID_EXE_flag = 0;
+                    }
+                    else if(instruction_type(EXE_stage.code) == RTYPE)
                     {
                         //compare exe destination with id source
                         if (EXE_stage.rd == ID_stage.rs)
@@ -984,7 +1017,10 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
                 }
                 if(1) //check mem stage
                 {
-                    if(instruction_type(MEM_stage.code) == RTYPE)
+                    if(MEM_stage.code == NNOP) {
+                        EXE_MEM_flag = 0;
+                    }
+                    else if(instruction_type(MEM_stage.code) == RTYPE)
                     {
                         //compare mem destination with id source
                         if (MEM_stage.rd == ID_stage.rs)
@@ -1002,6 +1038,10 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
                     }
                 }
             }
+
+			if (MEM_stage.code == LDW, MEM_stage.code == STW) {
+				stalls_no_forwarding +=1;
+			}
 
             //reset stall amount
             stalls_no_forwarding = 0;
@@ -1021,6 +1061,7 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
             }
             else //no hazard
             {
+                // printf("No Hazard\n");
                 goto normal;
             }
 
@@ -1041,15 +1082,14 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
             goto normal;
 
 
-
-
         branch: //branch
             {
-                //
+                clk_cnt+=2;
             }
 
         normal:
             clk_cnt++;
+            // stalls_no_forwarding = 0;
 
             //Shift instructions through pipeline. Order is important here
             WB_stage = MEM_stage; //MEM to WB
@@ -1057,7 +1097,8 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
             EXE_stage = ID_stage; //ID to EXE
             ID_stage = IF_stage; //IF to ID
             IF_stage = new_instruction; //new instruction enters the pipeline
-    }
+            old_pc = pc;
+    // }
 
     return 0;
 }
