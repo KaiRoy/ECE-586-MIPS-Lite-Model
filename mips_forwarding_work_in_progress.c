@@ -125,6 +125,7 @@ int total_stalls_with_forwarding = 0;
 int ID_EXE_flag;
 int EXE_MEM_flag;
 
+
 int ID_EXE_flag_forwarding;
 int EXE_MEM_flag_forwarding;
 
@@ -309,16 +310,17 @@ int main(void) {
 	print_regs(&registers);
 	print_mem(&memory);
 
-	if (mode == 1 || mode == 2) {
+	if (mode == 1) {
 		// Insert UI function for Timing (no forwarding) ----------------
 		printf("\nClock Count = %d\n", clk_cnt);
 		printf("Stall count no forwarding: %d\n", total_stalls_no_forwarding);
         printf("Total number of clock cycles no forwarding: %d\n", clk_cnt + total_stalls_no_forwarding);
-
-        printf("Stall count with forwarding: %d\n", total_stalls_with_forwarding);
-        printf("Total number of clock cycles with forwarding: %d\n", clk_cnt + total_stalls_with_forwarding);
 	} else if (mode == 2) {
 		// Insert UI function for Timing (forwarding) -------------------
+		// Insert UI function for Timing (no forwarding) ----------------
+		printf("\nClock Count = %d\n", clk_cnt);
+        printf("Stall count with forwarding: %d\n", total_stalls_with_forwarding);
+        printf("Total number of clock cycles with forwarding: %d\n", clk_cnt + total_stalls_with_forwarding);
 	}
 
 
@@ -882,6 +884,7 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
 
 	if (MEM_stage.code == LDW, MEM_stage.code == STW) {
 		total_stalls_no_forwarding +=1;
+		// total_stalls_with_forwarding +=1;
 	}
 
 	// stalls_no_forwarding = 0;
@@ -896,7 +899,7 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
 	EXE_MEM_flag = 0;
 	
 	// ID_EXE_flag_forwarding = 0;
-	// EXE_MEM_flag_forwarding = 0;
+	EXE_MEM_flag_forwarding = 0;
 
 	//WB_MEM_flag = 0;
 
@@ -992,6 +995,28 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
 					}
 				}
 			}
+			if(1) //check mem stage
+			{
+				if(MEM_stage.code == NNOP) {
+					EXE_MEM_flag_forwarding = 0;
+				}
+				else if(instruction_type(MEM_stage.code) == RTYPE)
+				{
+					//compare mem destination with id source
+					if (MEM_stage.rd == EXE_stage.rs || MEM_stage.rd == EXE_stage.rt)
+					{
+						EXE_MEM_flag_forwarding = 1;
+					}
+				}
+				else //instruction_type(mem_stage) == ITYPE
+				{
+					//compare mem destination with id source
+					if (MEM_stage.rt == EXE_stage.rs || MEM_stage.rt == EXE_stage.rs)
+					{
+						EXE_MEM_flag_forwarding = 1;
+					}
+				}
+			}
 
 		}
 		else //instruction_type(ID_stage) == ITYPE
@@ -1040,6 +1065,28 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
 					}
 				}
 			}
+			if(1) //check mem stage
+			{
+				if(MEM_stage.code == NNOP) {
+					EXE_MEM_flag_forwarding = 0;
+				}
+				else if(instruction_type(MEM_stage.code) == RTYPE)
+				{
+					//compare mem destination with id source
+					if (MEM_stage.rd == EXE_stage.rs)
+					{
+						EXE_MEM_flag_forwarding = 1;
+					}
+				}
+				else //instruction_type(mem_stage) == ITYPE
+				{
+					//compare mem destination with id source
+					if (MEM_stage.rt == EXE_stage.rs)
+					{
+						EXE_MEM_flag_forwarding = 1;
+					}
+				}
+			}
 		}
 
 
@@ -1051,16 +1098,22 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
 		if(ID_EXE_flag == 1 && EXE_MEM_flag == 0)
 		{
 			stalls_no_forwarding += 2;
-			stalls_with_forwarding += 1;
+			// stalls_with_forwarding += 1;
 		}
 		else if(ID_EXE_flag == 1 && EXE_MEM_flag == 1)
 		{
 			stalls_no_forwarding += 2;
-			stalls_with_forwarding += 1;
+			// stalls_with_forwarding += 1;
 		}
 		else if(ID_EXE_flag == 0 && EXE_MEM_flag == 1)
 		{
 			stalls_no_forwarding += 1;
+			// stalls_with_forwarding += 1;
+		}
+		else if(EXE_MEM_flag_forwarding == 1)
+		{
+			// stalls_no_forwarding += 1;
+			stalls_with_forwarding += 1;
 		}
 		else //no hazard
 		{
