@@ -309,14 +309,14 @@ int main(void) {
 	print_regs(&registers);
 	print_mem(&memory);
 
-	if (mode == 1) {
+	if (mode == 1 || mode == 2) {
 		// Insert UI function for Timing (no forwarding) ----------------
 		printf("\nClock Count = %d\n", clk_cnt);
 		printf("Stall count no forwarding: %d\n", total_stalls_no_forwarding);
         printf("Total number of clock cycles no forwarding: %d\n", clk_cnt + total_stalls_no_forwarding);
 
-        printf("Stall count with forwarding: %d\n", stalls_with_forwarding);
-        printf("Total number of clock cycles with forwarding: %d\n", clk_cnt + stalls_with_forwarding);
+        printf("Stall count with forwarding: %d\n", total_stalls_with_forwarding);
+        printf("Total number of clock cycles with forwarding: %d\n", clk_cnt + total_stalls_with_forwarding);
 	} else if (mode == 2) {
 		// Insert UI function for Timing (forwarding) -------------------
 	}
@@ -725,7 +725,7 @@ void menu() {
 			mode = 1;
 			break;
 		}
-		else if(choice == 1){
+		else if(choice == 2){
 			mode = 2;
 			break;
 		}
@@ -734,7 +734,6 @@ void menu() {
 			exit(1);
 		}
 		else {
-
 			printf("\nYou have not entered a valid input\n");
 			printf("Please Try again\n");
 			continue;
@@ -896,8 +895,8 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
 	ID_EXE_flag = 0;
 	EXE_MEM_flag = 0;
 	
-	ID_EXE_flag_forwarding = 0;
-	EXE_MEM_flag_forwarding = 0;
+	// ID_EXE_flag_forwarding = 0;
+	// EXE_MEM_flag_forwarding = 0;
 
 	//WB_MEM_flag = 0;
 
@@ -909,35 +908,35 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
 	old_pc = pc;
 	
 	
-	//THIS IS FOR FORWARDING IN THE TIMING
-    if (MEM_stage.code != NNOP) {
-    //printf("MEM_stage.code: %d\n", MEM_stage.code); // Debugging output
-    if (instruction_type(MEM_stage.code) == RTYPE) {
-        if (MEM_stage.rd != 0 || MEM_stage.rd == ID_stage.rs) {
-					ID_EXE_flag_forwarding = 1;        }
-        if (MEM_stage.rd != 0 || MEM_stage.rd == ID_stage.rt) {
-					ID_EXE_flag_forwarding = 1;        }
-    } else if (instruction_type(MEM_stage.code) == ITYPE) {
-        if (MEM_stage.rt != 0 || MEM_stage.rt == ID_stage.rs) {
-					ID_EXE_flag_forwarding = 1;        }
-        if (MEM_stage.rt != 0 || MEM_stage.rt == ID_stage.rt) {
-					ID_EXE_flag_forwarding = 1;        }
-    }
-}
-    if (WB_stage.code != NNOP) {
-        if (instruction_type(WB_stage.code) == RTYPE) {
-            if (WB_stage.rd != 0 || WB_stage.rd == ID_stage.rs) {
-					EXE_MEM_flag_forwarding = 1;
-            }
-            if (WB_stage.rd != 0 || WB_stage.rd == ID_stage.rt) {
-					EXE_MEM_flag_forwarding = 1;            }
-        } else if (instruction_type(WB_stage.code) == ITYPE) {
-            if (WB_stage.rt != 0 || WB_stage.rt == ID_stage.rs) {
-					EXE_MEM_flag_forwarding = 1;            }
-            if (WB_stage.rt != 0 || WB_stage.rt == ID_stage.rt) {
-					EXE_MEM_flag_forwarding = 1;            }
-        }
-    }
+// 	//THIS IS FOR FORWARDING IN THE TIMING
+//     if (MEM_stage.code != NNOP) {
+//     //printf("MEM_stage.code: %d\n", MEM_stage.code); // Debugging output
+//     if (instruction_type(MEM_stage.code) == RTYPE) {
+//         if (MEM_stage.rd != 0 || MEM_stage.rd == ID_stage.rs) {
+// 					ID_EXE_flag_forwarding = 1;        }
+//         if (MEM_stage.rd != 0 || MEM_stage.rd == ID_stage.rt) {
+// 					ID_EXE_flag_forwarding = 1;        }
+//     } else if (instruction_type(MEM_stage.code) == ITYPE) {
+//         if (MEM_stage.rt != 0 || MEM_stage.rt == ID_stage.rs) {
+// 					ID_EXE_flag_forwarding = 1;        }
+//         if (MEM_stage.rt != 0 || MEM_stage.rt == ID_stage.rt) {
+// 					ID_EXE_flag_forwarding = 1;        }
+//     }
+// }
+//     if (WB_stage.code != NNOP) {
+//         if (instruction_type(WB_stage.code) == RTYPE) {
+//             if (WB_stage.rd != 0 || WB_stage.rd == ID_stage.rs) {
+// 					EXE_MEM_flag_forwarding = 1;
+//             }
+//             if (WB_stage.rd != 0 || WB_stage.rd == ID_stage.rt) {
+// 					EXE_MEM_flag_forwarding = 1;            }
+//         } else if (instruction_type(WB_stage.code) == ITYPE) {
+//             if (WB_stage.rt != 0 || WB_stage.rt == ID_stage.rs) {
+// 					EXE_MEM_flag_forwarding = 1;            }
+//             if (WB_stage.rt != 0 || WB_stage.rt == ID_stage.rt) {
+// 					EXE_MEM_flag_forwarding = 1;            }
+//         }
+//     }
     
     
     
@@ -1046,15 +1045,18 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
 
 		//reset stall amount
 		stalls_no_forwarding = 0;
+		stalls_with_forwarding = 0; 
 
 		//compute stall cycles from hazard
 		if(ID_EXE_flag == 1 && EXE_MEM_flag == 0)
 		{
 			stalls_no_forwarding += 2;
+			stalls_with_forwarding += 1;
 		}
 		else if(ID_EXE_flag == 1 && EXE_MEM_flag == 1)
 		{
 			stalls_no_forwarding += 2;
+			stalls_with_forwarding += 1;
 		}
 		else if(ID_EXE_flag == 0 && EXE_MEM_flag == 1)
 		{
@@ -1068,36 +1070,50 @@ int timing_sim(struct instruction instr, struct Memory *memory, struct Registers
 
 		//calculate total number of stalls by the program
 		total_stalls_no_forwarding += stalls_no_forwarding;
+		total_stalls_with_forwarding += stalls_with_forwarding;
 		
 		//Stalls with forwarding
-		stalls_with_forwarding = 0; //Reset the stalls with forwarding
+		// stalls_with_forwarding = 0; //Reset the stalls with forwarding
 		
-		if(ID_EXE_flag_forwarding == 1 && EXE_MEM_flag_forwarding == 0)
-		{
-			stalls_with_forwarding += 1;
-		}
-		else if(ID_EXE_flag_forwarding == 1 && EXE_MEM_flag_forwarding == 1)
-		{
-			stalls_with_forwarding += 1;
-		}else{
-		    return 0;
-		}
+		// if(ID_EXE_flag_forwarding == 1 && EXE_MEM_flag_forwarding == 0)
+		// {
+		// 	stalls_with_forwarding += 1;
+		// }
+		// else if(ID_EXE_flag_forwarding == 1 && EXE_MEM_flag_forwarding == 1)
+		// {
+		// 	stalls_with_forwarding += 1;
+		// }else{
+		//     return 0;
+		// }
 		
-		//Calculating the stalls with forwarding
-		total_stalls_with_forwarding += stalls_with_forwarding;
+		// //Calculating the stalls with forwarding
+		// total_stalls_with_forwarding += stalls_with_forwarding;
 		
 
 		//insert NOPS into EX stage
-		for (int i = 0; i < stalls_no_forwarding; i++)
-		{
-			//clk_cnt++;
+		if (mode == 2) {
+			for (int i = 0; i < stalls_with_forwarding; i++)
+			{
+				//clk_cnt++;
 
-			IF_stage = IF_stage;
-			ID_stage = ID_stage;
-			EXE_stage = NOP;
-			WB_stage = MEM_stage;
-			MEM_stage = EXE_stage;
-		}
+				IF_stage = IF_stage;
+				ID_stage = ID_stage;
+				EXE_stage = NOP;
+				WB_stage = MEM_stage;
+				MEM_stage = EXE_stage;
+			}
+		} else {
+			for (int i = 0; i < stalls_no_forwarding; i++)
+			{
+				//clk_cnt++;
+
+				IF_stage = IF_stage;
+				ID_stage = ID_stage;
+				EXE_stage = NOP;
+				WB_stage = MEM_stage;
+				MEM_stage = EXE_stage;
+			}
+		}	
 		// goto normal;
 
 
