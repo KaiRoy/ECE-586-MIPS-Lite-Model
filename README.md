@@ -24,10 +24,10 @@ Our MIPS lite was 32-bits and we implemented the following types of components:
 - **Trace reader**: This reads the memory image and sends the next instruction to the decoder.
 - **Instruction decoder**: Decodes the instruction, and determines what registers it will be sent to.
 - **Functional Simulator**: Simulates the instructions behaviors while keeping track of the register and memory states. 
-- **Pipeline simulator**: Keeps track of the current clock cycle, the instruction in each pipeline stage, identifies the stalls and hazards and propagates instructions from one pipeline stage to the next.
+- **Pipeline/Timing simulator**: Keeps track of the current clock cycle, the instruction in each pipeline stage, identifies the stalls and hazards and propagates instructions from one pipeline stage to the next.
 
-We were supplied with OP codes that we needed to use so our program could understand the provided instructions. This included: 
-
+<!-- Instruction Formatting -->
+The following are the instructions needed for our MIPS Lite Model and their corresponding opcodes: 
 **Arithmetic:**
 - ADD	= 0x00 	//000000
 - ADDI	= 0x01 	//000001
@@ -70,26 +70,51 @@ The three instruction formats that our MIPS Lite Model supports include:
 <!-- Insert Image of Format? -->
 
 
+<!-- Pipeline structure -->
+The MIPS Lite model must implement a 5-stage pipeline for timing simulator
+
+- **Instruction Fetch**: Fetch the instruction, increment the program counter.
+- **Instruction Decode**: takes the instruction and breaks it down into something it can understand while also checking contents of the source registers.
+- **Execute**: Executes the operation that was decoded.
+- **Memory Access**: Loads and stores any instructions if needed.
+- **Write Back**: Write the result back to the destination register.
+
+<!-- Modes -->
+The model needs to have three modes, that can be run without recompilation.
+- The first mode is purely functional with no timing simulation.
+- The second mode implements timing simulation for the 5-stage pipeline without any forwarding. 
+- The second mode implements timing simulator for the 5-stage pipeline with forwarding enabled. 
+
+<!-- Output Format -->
+The program must have the following output format:
+
+<!-- Insert Image of Format? -->
+
+
 ## Designs
 
 <!-- Create a Block Diagram of the System?-->
 <!-- ![System Block Diagram](Assets/ECE%2044x%20Block%20Diagram.png) -->
 
-<!-- Reiterate project requirement document -->
-<!-- Necessary Commands, code structure, etc-->
-
 <!-- Design Implementation Choices-->
+We first created a struct for the instructions to contain the opcode, type of instruction, registers, and immediate values. During the handling of the trace file/memory image, an array is created to hold every instruction in the memory image. A PC variable is used to index into this array during functional simulation. The program/data memory and the register files are modeled as simple arrays. 
 
+The model simulation is split into two main functions: the functional simulator and the timing simulator. For simplicity, these functions were designed in such a way that no direct interaction is needed for either to function as intended. Both functions require the current instruction, memory array, and register array as inputs. 
+
+The functional simulator is further split into four functions, each handling a different type of instruction (Arithmetic, Logic, Memory, Control). It was decided to split into this way instead of splitting based on opcode format i.e. R type, I type, J type, was the requirement to keep track of how many of each type of instruction being run. 
+
+The timing simulator handles both timing modes with most of the calculations being the same with only a couple of differences. The timing simulator contains a five element array to keep track of which instruction is which stage of the pipeline. By comparing the regsiters being used by each instruction, specific data hazards can be found and depending on the hazard the pipeline is stalled by that amount. Stalls do two things in the timing simulator, they add additional clock cycles to the ongoing clock counter and the add nop instructions into the pipeline equal to the stalls needed. This is necessary to ensure that no additional hazards are considered that would be resolved from a previous hazards stall. The number of stalls per hazard and the nop insertion is where the forwarding and non-forwarding modes have differences. 
 
 
 ## Current State of the Project
 
-<!-- Outputs from the test files match the outputs given in class -->
-
+By the end of the project, our model was able to match the example output with the memory image provided for testing. With our design being incomplete during our demo time, we do not know how the model would handle that memory image since we were not allowed to save the file. 
 
 ## Post Project Notes
 
-<!-- Comment on timing organization, we were not able to get the project done before the demo, but were able to before the end of the term -->
+The main issue faced with this project was time. We had delayed the beginning of this project for too long and while the model was finished by the end of the project, we were not able to have the program ready by our alotted demo time. 
+
+While the model is fully functional, to our knowledge, the main improvements that can be made are optimizations to the code base. 
 
 
 ## Installation
