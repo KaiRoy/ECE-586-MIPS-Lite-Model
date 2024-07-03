@@ -59,17 +59,17 @@ The three instruction formats that our MIPS Lite Model supports include:
 
 **R-Type**
 
-| Opcode[31:26] | Rs[25:21] | Rt[20:16] | Rd[15:11] | x[10:0] |
+| Opcode [31:26] | Rs [25:21] | Rt [20:16] | Rd [15:11] | x [10:0] |
 | --- | --- | --- | --- | --- |
 
 **I-Type**
 
-| Opcode[31:26] | Rs[25:21] | Rt[20:16] | imm[15:0] |
+| Opcode [31:26] | Rs [25:21] | Rt [20:16] | imm [15:0] |
 | --- | --- | --- | ------ |
 
 **J-Type**
 
-| Opcode[31:26] | Rs[25:21] | x[20:0] |
+| Opcode [31:26] | Rs [25:21] | x [20:0] |
 | --- | --- | --------- |
 
 
@@ -92,6 +92,7 @@ The model needs to have three modes, that can be run without recompilation.
 The program must have the following output format:
 
 <!-- Insert Image of Format? -->
+![Output Format](Assets/image3.png)
 
 
 ## Designs
