@@ -59,15 +59,18 @@ The three instruction formats that our MIPS Lite Model supports include:
 
 **R-Type**
 
-<!-- Insert Image of Format? -->
+| Opcode[31:26] | Rs[25:21] | Rt[20:16] | Rd[15:11] | x[10:0] |
+| --- | --- | --- | --- | --- |
 
 **I-Type**
 
-<!-- Insert Image of Format? -->
+| Opcode[31:26] | Rs[25:21] | Rt[20:16] | imm[15:0] |
+| --- | --- | --- | ------ |
 
 **J-Type**
 
-<!-- Insert Image of Format? -->
+| Opcode[31:26] | Rs[25:21] | x[20:0] |
+| --- | --- | --------- |
 
 
 <!-- Pipeline structure -->
